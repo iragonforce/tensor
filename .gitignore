@@ -147,3 +147,12 @@
 !user/.config/swaync/style.css
 !user/.config/hypr/hyprland.lua
 !user/.config/hypr/hyprmoncfg-monitors.lua
+!user/.config/pipewire/
+!user/.config/pipewire/pipewire.conf.d/
+!user/.config/pipewire/pipewire.conf.d/99-hires-dac.conf
+!user/.config/pipewire/pipewire.conf.d/high-res.conf
+!user/.config/wireplumber/
+!user/.config/wireplumber/wireplumber.conf.d/
+!user/.config/wireplumber/wireplumber.conf.d/00-plasma-pa.conf
+!user/.config/wireplumber/wireplumber.conf.d/98-hide-unused-audio.conf
+!user/.config/wireplumber/wireplumber.conf.d/99-usb-dac-hires.conf
