@@ -1,0 +1,50 @@
+font-family = JetBrainsMono Nerd Font Mono
+font-size = 12
+command = /bin/zsh
+shell-integration = zsh
+window-save-state = never
+background-opacity = 0.75
+background-opacity-cells = true
+background-blur = true
+mouse-hide-while-typing = true
+custom-shader = shaders/cursor_tail.glsl
+custom-shader = shaders/cursor_sweep.glsl
+# qubit colors begin
+background = #000000
+foreground = #ffffff
+selection-background = #ffffff
+selection-foreground = #000000
+cursor-color = #ffffff
+cursor-style = bar
+
+palette = 0=#000000
+palette = 8=#808080
+palette = 1=#ff0000
+palette = 9=#ff3030
+palette = 2=#00ff00
+palette = 10=#30ff30
+palette = 3=#ffff00
+palette = 11=#ffff40
+palette = 4=#0000ff
+palette = 12=#4040ff
+palette = 5=#ff00ff
+palette = 13=#ff40ff
+palette = 6=#00ffff
+palette = 14=#40ffff
+palette = 7=#c0c0c0
+palette = 15=#ffffff
+# qubit colors end
+
+# Copy mouse-selected text with Super+C; GTK displays a clipboard-copy toast.
+app-notifications = clipboard-copy,config-reload
+copy-on-select = clipboard
+# Switch between application mouse clicks and native selection/scrollback.
+# Shift-drag selects text without switching modes.
+keybind = super+shift+m=toggle_mouse_reporting
+# Native copy/paste works with or without tmux. Shift+F1/F2 reach Neovim visual mode.
+keybind = super+c=copy_to_clipboard
+keybind = chain=csi:1;2P
+keybind = super+v=paste_from_clipboard
+keybind = super+x=copy_to_clipboard
+keybind = chain=csi:1;2Q
+keybind = ctrl+shift+v=paste_from_clipboard
