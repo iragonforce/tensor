@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+set -u
+
+mode="${0##*/}"
+log="$HOME/.cache/rofi-launcher.log"
+
+if [[ ${ROFI_RETV:-0} == 0 ]]; then
+  case "$mode" in
+    web)
+      label='Web Search'
+      hint='Type search query and press Enter'
+      ;;
+    command)
+      label='Terminal Command'
+      hint='Type command and press Enter'
+      ;;
+    hermes)
+      label='Hermes AI'
+      hint='Type prompt and press Enter'
+      ;;
+    *)
+      exit 0
+      ;;
+  esac
+
+  printf '\0prompt\x1f%s\n' "$label"
+  printf '%s\0nonselectable\x1ftrue\n' "$hint"
+  exit 0
+fi
+
+[[ ${ROFI_RETV:-0} == 2 ]] || exit 0
+
+query="${1:-}"
+[[ -n "${query//[[:space:]]/}" ]] || exit 0
+
+case "$mode" in
+  web)
+    url="$(python3 -c '
+import sys, urllib.parse
+print(
+    "https://www.google.com/search?q=" +
+    urllib.parse.quote_plus(sys.argv[1])
+)
+' "$query")"
+
+    setsid -f xdg-open "$url" >>"$log" 2>&1
+    ;;
+
+  command|hermes)
+    "$HOME/.local/bin/rofi-tmux-run" \
+      "$mode" "$query" >>"$log" 2>&1
+    ;;
+esac

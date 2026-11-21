@@ -1,0 +1,137 @@
+/* ═══════════════════════════════════════════════════════════════
+   SWAYNC STYLE — Frosted Glass Dark Theme
+   ═══════════════════════════════════════════════════════════════ */
+
+* {
+    font-family: "JetBrainsMono Nerd Font";
+    font-size: 13px;
+}
+
+/* ─── Notification Popup ─── */
+.notification-row {
+    outline: none;
+}
+
+.notification {
+    background: rgba(17, 17, 27, 0.88);
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    margin: 6px 12px;
+    padding: 0;
+    transition: all 200ms ease;
+}
+
+.notification:hover {
+    border-color: rgba(122, 162, 212, 0.3);
+}
+
+.notification-content {
+    padding: 12px 16px;
+}
+
+.summary {
+    color: #cdd6f4;
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.body {
+    color: rgba(205, 214, 244, 0.7);
+    font-size: 12px;
+}
+
+.time {
+    color: rgba(205, 214, 244, 0.4);
+    font-size: 11px;
+    margin-right: 16px;
+}
+
+.close-button {
+    background: rgba(243, 139, 168, 0.15);
+    color: #f38ba8;
+    border-radius: 8px;
+    padding: 4px;
+    margin: 8px;
+    border: none;
+    min-width: 24px;
+    min-height: 24px;
+}
+
+.close-button:hover {
+    background: rgba(243, 139, 168, 0.3);
+}
+
+.notification-action {
+    background: rgba(122, 162, 212, 0.12);
+    color: #9abce0;
+    border-radius: 8px;
+    border: none;
+    padding: 6px 16px;
+    margin: 4px;
+    transition: background 200ms ease;
+}
+
+.notification-action:hover {
+    background: rgba(122, 162, 212, 0.25);
+}
+
+/* ─── Control Center ─── */
+.control-center {
+    background: rgba(17, 17, 27, 0.90);
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    padding: 12px;
+}
+
+.control-center .notification {
+    margin: 4px 0;
+}
+
+/* ─── Widgets ─── */
+.widget-title {
+    color: #cdd6f4;
+    font-size: 16px;
+    font-weight: bold;
+    padding: 8px 12px;
+}
+
+.widget-title > button {
+    background: rgba(243, 139, 168, 0.12);
+    color: #f38ba8;
+    border-radius: 8px;
+    border: none;
+    padding: 4px 16px;
+    font-size: 12px;
+    transition: background 200ms ease;
+}
+
+.widget-title > button:hover {
+    background: rgba(243, 139, 168, 0.25);
+}
+
+.widget-dnd {
+    color: rgba(205, 214, 244, 0.7);
+    padding: 8px 12px;
+}
+
+.widget-dnd > switch {
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.08);
+    border: none;
+}
+
+.widget-dnd > switch:checked {
+    background: rgba(122, 162, 212, 0.4);
+}
+
+.widget-dnd > switch slider {
+    background: #cdd6f4;
+    border-radius: 10px;
+    min-width: 16px;
+    min-height: 16px;
+}
+
+/* ─── Blank Window (click-to-dismiss overlay) ─── */
+.blank-window {
+    background: transparent;
+}

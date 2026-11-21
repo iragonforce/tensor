@@ -1,0 +1,356 @@
+@import "colors.css";
+
+/* Global font defaults for the whole bar.
+ * Individual modules override size where they need more emphasis.
+ */
+* {
+    font-family: "JetBrainsMono Nerd Font", "Symbols Nerd Font Mono", "Font Awesome 6 Free";
+    font-size: 12px;
+    min-height: 0;
+    transition: color 100ms ease-out, background-color 150ms ease-out,
+                border-color 150ms ease-out, box-shadow 180ms ease-out;
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 1);
+}
+
+window#waybar {
+    /* Keep the Waybar window itself invisible; the three module containers below are the bubbles. */
+    background: transparent;
+    color: #EAF4FF;
+}
+
+/* The three visible bubbles are the left/center/right Waybar containers.
+ * Target both the container classes and group-module IDs because Waybar's GTK node names vary
+ * slightly between versions.
+ */
+.modules-left,
+.modules-center,
+.modules-right,
+#group-pill-left,
+#group-pill-left > box,
+#group-pill-center,
+#group-pill-center > box,
+#group-pill-right,
+#group-pill-right > box {
+    background: rgba(190, 190, 190, 0.20);
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    padding: 0 7px;
+    margin: 0 6px;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.50), 0px 2px rgba(0, 0, 0, 0.50);
+}
+
+.modules-left {
+    margin-left: 0;
+}
+
+.modules-right {
+    margin-right: 0;
+}
+
+/* Left pill: distro mark + active window title. */
+.arch-logo {
+    color: #EAF4FF;
+    font-size: 26px;
+    padding: 0 14px 0 12px;
+    margin: 0;
+}
+
+#window {
+    color: #EAF4FF;
+    font-size: 13px;
+    padding: 0 10px 0 0;
+    font-weight: 800;
+    margin: 0;
+}
+
+#window:hover {
+    color: #EAF4FF;
+}
+
+/* Center pill: workspace strip.
+ * These icons are intentionally oversized so the workspace area reads like a dock.
+ */
+.workspace-dot {
+    color: #EAF4FF;
+    font-size: 36px;
+    padding: 0 9px 0 10px;
+    margin: -2px 0 0 0;
+}
+
+#workspaces button {
+    padding: 0 10px;
+    margin: 0 1px;
+    border: none;
+    border-radius: 10px;
+    background: transparent;
+    color: #EAF4FF;
+    font-size: 36px;
+    transition: color 100ms ease-out, background-color 160ms ease-out,
+                box-shadow 180ms ease-out;
+}
+
+#workspaces button.active {
+    color: #EAF4FF;
+    background: rgba(255, 255, 255, 0.10);
+}
+
+#workspaces button:hover {
+    color: #EAF4FF;
+    background: rgba(255, 255, 255, 0.10);
+}
+
+#workspaces button.active:hover {
+    background: rgba(255, 255, 255, 0.14);
+}
+
+/* The input button stays mapped; only its plus glyph fades. */
+#workspaces button.workspace-add label {
+    opacity: 0;
+    transition: opacity 120ms ease-out;
+}
+
+#workspaces button.workspace-add.plus-visible label {
+    opacity: 1;
+}
+
+#workspaces button.urgent {
+    color: #EAF4FF;
+    background: alpha(@red, 0.16);
+}
+
+#workspaces button.dragging { opacity: 0.65; }
+#workspaces button.drop-before { box-shadow: inset 2px 0 rgba(170, 210, 255, 0.9); }
+#workspaces button.drop-after { box-shadow: inset -2px 0 rgba(170, 210, 255, 0.9); }
+
+/* Right pill: tray + system stats + date/time. */
+#tray {
+    padding: 0 6px 0 2px;
+    margin: 0 1px;
+    font-weight: 600;
+    font-size: 13px;
+}
+
+/* Tray dropdown styling. */
+#bluetooth {
+    color: #EAF4FF;
+    font-size: 19px;
+    padding: 0 7px;
+    margin: 0 1px;
+    border-radius: 10px;
+}
+
+#bluetooth.off,
+#bluetooth.disabled,
+#bluetooth.no-controller {
+    opacity: 0.45;
+}
+
+#bluetooth:hover {
+    background: rgba(255, 255, 255, 0.10);
+}
+
+/* Tray dropdown styling. */
+#tray menu {
+    background: rgb(0, 0, 0);
+    border: 1px solid rgba(255, 255, 255, 1);
+}
+
+/* Shared baseline sizing for the status modules.
+ * Keeping one block here prevents each module from drifting vertically.
+ */
+.ssd-value{
+    padding: 0 7px;
+    margin: 0 4px 0 0; /* top right bottom left*/
+    font-weight: 700;
+    font-size: 12px;
+}
+.ssd-icon {
+    padding: 0 7px;
+    margin: 0 1px;
+    font-weight: 600;
+    font-size: 13px;
+}
+.audio-value{
+    padding: 0 7px;
+    margin: 0 1px;
+    font-weight: 700;
+    font-size: 12px;
+}
+.audio-icon {
+    padding: 0 6px ;
+    margin: 0 1px;
+    font-weight: 600;
+    font-size: 17px;
+}
+.memory-icon{
+    padding: 0 8px 0 7px;
+    margin: 0 1px;
+    font-weight: 300;
+    font-size: 3px;
+}
+#memory{
+    padding: 0 8px 0 8px;
+    margin: 0 1px 0 0; /* top right bottom left*/
+    font-weight: 700;
+    font-size: 12px;
+}
+.cpu-value{
+    padding: 0 7px;
+    margin: 0 1px;
+    font-weight: 700;
+    font-size: 12px;
+}
+.cpu-icon {
+    padding: 0 7px 0 4px;
+    margin: 0 1px;
+    font-weight: 600;
+    font-size: 11px;
+}
+.gpu-value{
+    padding: 0 7px;
+    margin: 0 4px 0 0; /* top right bottom left*/
+    font-weight: 700;
+    font-size: 12px;
+}
+.gpu-icon {
+    padding: 0 7px;
+    margin: 0 4px 0 0; /* top right bottom left*/
+    font-weight: 600;
+    font-size: 25px;
+}
+.net-icon {
+    padding: 0 7px;
+    margin: 0 1px;
+    font-weight: 600;
+    font-size: 15px;
+}
+
+.net-value {
+    padding: 0 10px 0 8px;
+    margin: 0 1px 0 0;
+    font-weight: 700;
+    font-size: 11px;
+}
+
+#clock.date,
+#clock.time {
+    padding: 0 7px;
+    margin: 0 1px;
+    font-weight: 800;
+    font-size: 12px;
+}
+ 
+/* Standalone network hardware icon.
+ * This exists only to keep the icon visually centered next to the two-line throughput text.
+ */
+.net-icon {
+    padding: 0 8px 0 6px;
+    margin: 1px 0 0 0;
+}
+
+/* Throughput text block under the standalone icon. */
+
+
+/* Single visible color for all Waybar items.
+ * App tray icons can keep their own bitmap colors; everything styleable here stays uniform.
+ */
+.ssd-value,
+.ssd-icon {
+    color: #EAF4FF;
+}
+
+.audio-value,
+.audio-icon {
+    color: #EAF4FF;
+}
+
+.audio-value.muted,
+.audio-icon.muted {
+    color: #EAF4FF;
+}
+
+#memory {
+    color: #EAF4FF;    
+}
+
+.cpu-value,
+.cpu-icon {
+    color: #EAF4FF;
+}
+
+.cpu-value.warning,
+.cpu-icon.warning {
+    color: #EAF4FF;
+}
+
+.cpu-value.critical,
+.cpu-icon.critical {
+    color: #EAF4FF;
+}
+
+.gpu-value,
+.gpu-icon {
+    color: #EAF4FF;
+}
+
+.gpu-value.warning,
+.gpu-icon.warning {
+    color: #EAF4FF;
+}
+
+.gpu-value.critical,
+.gpu-icon.critical {
+    color: #EAF4FF;
+}
+
+.net-value,
+.net-icon {
+    color: #EAF4FF;
+}
+
+#clock.date {
+    color: #EAF4FF;
+}
+
+#clock.time {
+    color: #EAF4FF;
+}
+
+/* Light hover feedback for clickable/readable modules. */
+#clock.time:hover,
+#clock.date:hover,
+.audio-value:hover,
+.audio-icon:hover,
+.ssd-value:hover,
+.ssd-icon:hover,
+#memory:hover,
+.cpu-value:hover,
+.cpu-icon:hover,
+.gpu-value:hover,
+.gpu-icon:hover,
+.net-value:hover,
+.net-icon:hover,
+.workspace-dot:hover {
+    background: rgba(255, 255, 255, 0.07);
+    border-radius: 10px;
+}
+
+tooltip {
+    background: rgba(30, 35, 40, 1);
+    border: 1px solid alpha(@accent, 0.35);
+    border-radius: 10px;
+    color: @text;
+}
+
+tooltip label {
+    color: #EAF4FF;
+}
+
+/* Workspace navigation is a separate surface; keep Waybar's empty center invisible. */
+window#waybar .modules-center {
+    background: transparent;
+    border: none;
+    padding: 0;
+    margin: 0;
+    box-shadow: none;
+}

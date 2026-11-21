@@ -1,0 +1,109 @@
+* {
+    bg:               rgba(190, 190, 190, 0.20);
+    bg-alt:           rgba(255, 255, 255, 0.07);
+    fg:               #EAF4FF;
+    fg-dim:           rgba(234, 244, 255, 0.50);
+    accent:           #ffffff;
+    accent-alt:       rgba(255, 255, 255, 0.10);
+    urgent:           #ff5555;
+    border-color:     rgba(255, 255, 255, 0.16);
+
+    background-color: transparent;
+    text-color:       @fg;
+}
+
+window {
+    width:            800px;
+    border:           1px solid;
+    border-color:     @border-color;
+    border-radius:    16px;
+    background-color: @bg;
+    padding:          0;
+}
+
+mainbox {
+    padding:          10px;
+    spacing:          8px;
+}
+
+inputbar {
+    background-color: @bg-alt;
+    border-radius:    10px;
+    padding:          10px 15px;
+    spacing:          8px;
+    children:         [ prompt, textbox-prompt-colon, entry ];
+}
+
+prompt {
+    text-color: @accent;
+}
+
+textbox-prompt-colon {
+    expand:     false;
+    str:        "";
+    text-color: @fg-dim;
+}
+
+entry {
+    placeholder:       "Search...";
+    placeholder-color: @fg-dim;
+}
+
+listview {
+    columns:      1;
+    lines:        12;
+    spacing:      4px;
+    fixed-height: true;
+    border:       0;
+    scrollbar: true;
+}
+
+element {
+    padding:          8px 12px;
+    border-radius:    8px;
+    spacing:          10px;
+}
+
+element selected.normal {
+    background-color: @accent-alt;
+    text-color:       @accent;
+}
+
+element normal.active {
+    text-color: @accent;
+}
+
+element-icon {
+    size: 24px;
+}
+
+element-text {
+    text-color: inherit;
+}
+
+mode-switcher {
+    spacing: 0;
+}
+
+button {
+    padding:       8px;
+    border-radius: 8px;
+    text-color:    @fg-dim;
+}
+
+button selected {
+    background-color: @accent-alt;
+    text-color:       @accent;
+}
+
+scrollbar {
+    handle-width:  6px;
+    handle-color:  @fg-dim;
+    border-radius: 3px;
+}
+
+message {
+    padding:          10px;
+    border-radius:    8px;
+    background-color: @bg-alt;
+}

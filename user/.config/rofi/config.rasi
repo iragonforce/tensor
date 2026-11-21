@@ -1,0 +1,17 @@
+configuration {
+    modi: "drun,run,filebrowser,files:~/.local/bin/rofi-file-search,web:~/.local/bin/rofi-web-search";
+    show-icons: true;
+    icon-theme: "Papirus-Dark";
+    font: "JetBrainsMono Nerd Font 12";
+    display-drun: "  Apps";
+    display-run: "  Run";
+    display-filebrowser: "  Dir"; 
+    display-files: "  Search"; 
+    display-web: "  Web";
+    drun-display-format: "{name}";
+    terminal: "ghostty";
+    click-to-exit: true;
+    scroll-method: 1;
+}
+
+@theme "custom"

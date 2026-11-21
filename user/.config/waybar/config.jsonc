@@ -1,0 +1,247 @@
+{
+    // Waybar layout overview:
+    // - left pill: Arch logo + active window title
+    // - center pill: interactive workspace strip for the primary screen, with a handle for workspace 10
+    // - right pill: tray + system stats + date/time
+    "layer": "top",
+    "output": ["__PRIMARY_OUTPUT__"],
+    "position": "top",
+
+    // Height is tuned to the actual minimum Waybar needs for the enlarged workspace icons.
+    "height": 49,
+    "spacing": 8,
+    "exclusive": true,
+    "margin-top": 8,
+    "margin-left": 8,
+    "margin-right": 8,
+
+    "modules-left": [
+        "group/pill-left"
+    ],
+    "modules-center": [],
+    "modules-right": [
+        "group/pill-right"
+    ],
+
+    // Left pill groups the distro mark and the active app title into one rounded block.
+    "group/pill-left": {
+        "orientation": "horizontal",
+        "modules": [
+            "custom/arch",
+            "hyprland/window"
+        ]
+    },
+
+    // Arch icon shown at the far left of the bar.
+    "custom/arch": {
+        "format": "{}",
+        "exec": "~/.config/hypr/scripts/waybar/icon.sh arch",
+        "return-type": "json",
+        "interval": "once",
+        "tooltip": false,
+        "on-click-right": "eww open --toggle powermenu",
+        "on-click-middle": "eww open --toggle powermenu"
+    },
+
+    // Active window title rewrite rules strip common "App — Page" or "Page - App" suffixes.
+    "hyprland/window": {
+        "format": "{title}",
+        "max-length": 48,
+        "separate-outputs": true,
+        "rewrite": {
+            "(.*) — (.*)": "$1",
+            "(.*) - (.*)": "$1",
+            "^$": "Arch Linux"
+        },
+        "tooltip": false
+    },
+
+    // Workspace buttons are supplied by the GTK layer-shell workspace strip.
+
+    // Right pill holds tray, performance stats, and the clock.
+    "group/pill-right": {
+        "orientation": "horizontal",
+        "modules": [
+            "tray",
+            "bluetooth",
+            // Audio control shows the active output type and volume.
+            // Left/right click opens the selector; middle click toggles the output.
+            "custom/audio-icon",
+            "custom/audio",
+            "custom/ssd-icon",
+            "custom/ssd",
+            "custom/memory-icon",
+            "memory",
+            "custom/cpu-icon",
+            "custom/cpu",
+            "custom/gpu-icon",
+            "custom/gpu",
+            "custom/net-icon",
+            "custom/net",
+            "clock#date",
+            "clock#time"
+        ]
+    },
+
+    // System tray uses smaller app icons than the workspace strip on purpose.
+    "tray": {
+        "icon-size": 20,
+        "spacing": 8
+    },
+
+    // Bluetooth: manage devices on left-click; toggle controller power on right-click.
+    "bluetooth": {
+        "format": "",
+        "format-disabled": "",
+        "format-off": "",
+        "format-on": "",
+        "format-connected": " {num_connections}",
+        "format-no-controller": "",
+        "tooltip-format": "Bluetooth: {status}\nLeft click: manage devices\nRight click: toggle power",
+        "tooltip-format-connected": "Bluetooth: {num_connections} connected\n{device_enumerate}\nLeft click: manage devices\nRight click: toggle power",
+        "tooltip-format-enumerate-connected": "{device_alias}",
+        "on-click": "blueman-manager",
+        "on-click-right": "~/.local/bin/bluetooth-toggle"
+    },
+
+    // Primary audio control for PipeWire.
+    // The script reports the current default sink and exposes click actions for switching/tuning.
+    "custom/audio-icon": {
+        "format": "{}",
+        "exec": "~/.config/hypr/scripts/waybar/audio-status.sh icon",
+        "return-type": "json",
+        "restart-interval": 1,
+        "tooltip": true,
+        "justify": "center",
+        "on-click": "eww open --toggle audio-menu",
+        "on-click-right": "eww open --toggle audio-menu",
+        "on-click-middle": "~/.config/eww/scripts/audio-output.sh toggle"
+    },
+
+    "custom/audio": {
+        "format": "{}",
+        "exec": "~/.config/hypr/scripts/waybar/audio-status.sh value",
+        "return-type": "json",
+        "restart-interval": 1,
+        "tooltip": true,
+        "justify": "center",
+        "on-click": "eww open --toggle audio-menu",
+        "on-click-right": "eww open --toggle audio-menu",
+        "on-click-middle": "~/.config/eww/scripts/audio-output.sh toggle",
+        "on-scroll-up": "swayosd-client --output-volume raise --max-volume 100",
+        "on-scroll-down": "swayosd-client --output-volume lower --max-volume 100"
+    },
+
+    // Custom stat modules are shell scripts because the built-in Waybar modules do not
+    // expose exactly the visual layout needed here.
+    "custom/ssd-icon": {
+        "format": "{}",
+        "exec": "~/.config/hypr/scripts/waybar/icon.sh ssd",
+        "return-type": "json",
+        "interval": "once",
+        "tooltip": false,
+        "on-click": "ghostty --class btop-widget -e btop",
+        "justify": "center"
+    },
+
+    "custom/ssd": {
+        "format": "{}",
+        "exec": "~/.config/hypr/scripts/waybar/ssd-io.sh",
+        "return-type": "json",
+        "restart-interval": 5,
+        "tooltip": true,
+        "justify": "center"
+    },
+
+    // Memory icon is split from the built-in memory value so CSS can position them independently.
+    "custom/memory-icon": {
+        "format": "{}",
+        "exec": "~/.config/hypr/scripts/waybar/icon.sh memory",
+        "return-type": "json",
+        "interval": "once",
+        "tooltip": false,
+        "justify": "center"
+    },
+
+    "memory": {
+        "format": "{percentage}%",
+        "justify": "center",
+        "interval": 2,
+        "tooltip-format": "Memory: {used:0.1f} GiB / {total:0.1f} GiB ({percentage}%)"
+    },
+
+    // CPU usage + CPU temperature.
+    "custom/cpu-icon": {
+        "format": "{}",
+        "exec": "~/.config/hypr/scripts/waybar/icon.sh cpu",
+        "return-type": "json",
+        "interval": "once",
+        "tooltip": false,
+        "justify": "center"
+    },
+
+    "custom/cpu": {
+        "format": "{}",
+        "exec": "~/.config/hypr/scripts/waybar/cpu-stats.sh",
+        "return-type": "json",
+        "restart-interval": 5,
+        "tooltip": true,
+        "justify": "center"
+    },
+
+    // NVIDIA GPU temperature + utilization.
+    "custom/gpu-icon": {
+        "format": "{}",
+        "exec": "~/.config/hypr/scripts/waybar/icon.sh gpu",
+        "return-type": "json",
+        "interval": "once",
+        "tooltip": false,
+        "justify": "center"
+    },
+
+    "custom/gpu": {
+        "format": "{}",
+        "exec": "~/.config/hypr/scripts/waybar/gpu-stats.sh",
+        "return-type": "json",
+        "restart-interval": 5,
+        "tooltip": true,
+        "justify": "center"
+    },
+
+    // Throughput text only. The hardware icon is split into its own module so it can center
+    // visually against the two-line upload/download block.
+    "custom/net": {
+        "format": "{}",
+        "exec": "~/.config/hypr/scripts/waybar/net-speed.sh",
+        "return-type": "json",
+        "restart-interval": 5,
+        "tooltip": true,
+        "justify": "center"
+    },
+
+    // Standalone network hardware icon used purely for alignment.
+    "custom/net-icon": {
+        "format": "{}",
+        "exec": "~/.config/hypr/scripts/waybar/icon.sh net",
+        "return-type": "json",
+        "interval": "once",
+        "tooltip": false,
+        "justify": "center"
+    },
+
+    // Date and time are split into separate modules so they can be styled independently.
+    "clock#date": {
+        "format": "{:%a %b %d}",
+        "interval": 60,
+        "tooltip-format": "<big>{:%Y %B}</big>\n<tt><small>{calendar}</small></tt>"
+    },
+
+    "clock#time": {
+        "format": "{:%I:%M %p}",
+        "interval": 1,
+        "tooltip": false,
+
+        // Clicking the time toggles the notification center instead of a calendar popup.
+        "on-click": "swaync-client -t -sw"
+    }
+}
