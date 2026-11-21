@@ -228,3 +228,4 @@
 !system/usr/local/sbin/tensor-standby-cpu
 !system/environment.d/
 !system/environment.d/90-nvidia-wayland.conf
+!user/.local/bin/bwrun
