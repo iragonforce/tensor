@@ -288,3 +288,7 @@
 !user/.config/nvim/plugin/nvlime_live_autodoc.lua
 !user/.config/nvim/plugin/smart_tab_languages.lua
 !user/.config/nvim/plugin/ui_overrides.lua
+!README.md
+!system/caddy/
+!system/caddy/Caddyfile
+!system/caddy/homelab-root.crt
