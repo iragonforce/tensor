@@ -1,0 +1,11 @@
+[Unit]
+Description=Compile Thunderbolt RX kernel on Nov 5 at 10 AM
+
+[Timer]
+OnCalendar=2026-11-05 10:00:00 America/Toronto
+AccuracySec=1min
+Persistent=false
+Unit=thunderbolt-rx-compile.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,17 @@
+[Unit]
+Description=OpenRGB RGB Controller
+After=graphical-session.target
+
+[Service]
+Type=simple
+ExecStartPre=/usr/bin/bash -lc 'for i in {1..30}; do curl -fsS http://127.0.0.1:27003/api/devices/ >/dev/null && exit 0; sleep 1; done; echo "openlinkhub API did not become ready" >&2; exit 1'
+ExecStart=/usr/bin/openrgb --startminimized --server --server-host 127.0.0.1 --server-port 6742 --noautoconnect
+ExecStartPost=/home/iragonforce/.local/share/tensor-control/venv/bin/python /home/iragonforce/.local/share/tensor-control/openrgb-ready.py
+Restart=on-failure
+RestartSec=5
+# Bound memory if another OpenRGB allocation bug occurs.
+MemoryMax=1G
+MemorySwapMax=0
+
+[Install]
+WantedBy=graphical-session.target

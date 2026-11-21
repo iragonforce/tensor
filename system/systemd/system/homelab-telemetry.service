@@ -1,0 +1,18 @@
+[Unit]
+Description=Read-only hardware and Docker telemetry to MQTT
+After=network-online.target tailscaled.service docker.service
+Wants=network-online.target
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 /usr/local/libexec/homelab-telemetry.py
+Restart=always
+RestartSec=10
+StateDirectory=homelab-telemetry
+StateDirectoryMode=0700
+UMask=0077
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectHome=yes
+MemoryMax=256M
+[Install]
+WantedBy=multi-user.target

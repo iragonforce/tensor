@@ -1,0 +1,9 @@
+[Unit]
+Description=Nexus fast storage over SMB3
+
+[Mount]
+What=//nexus/fast
+Where=/mnt/nexus-smb/fast
+Type=cifs
+Options=guest,username=nexus_guest_probe_20261118,vers=3.0,uid=1000,gid=1000,file_mode=0660,dir_mode=0770,nosuid,nodev,_netdev
+TimeoutSec=30s

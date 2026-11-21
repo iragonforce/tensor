@@ -1,0 +1,12 @@
+[Unit]
+Description=Tensor center workspace bar
+PartOf=graphical-session.target
+After=graphical-session.target
+
+[Service]
+ExecStart=/home/iragonforce/.config/hypr/scripts/start-workspace-strip.sh
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=graphical-session.target

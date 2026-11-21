@@ -1,0 +1,16 @@
+[Unit]
+Description=Authenticated Tensor lighting, display and power controls (tensor)
+Wants=network-online.target openlinkhub.service user@1000.service
+After=network-online.target openlinkhub.service user@1000.service
+[Service]
+Type=simple
+User=iragonforce
+Environment=XDG_RUNTIME_DIR=/run/user/1000
+Environment=DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus
+LoadCredential=control.json:/etc/tensor-control/control.json
+ExecStart=/usr/bin/python3 /usr/local/lib/tensor-control/control-server.py
+Restart=on-failure
+RestartSec=5
+UMask=0077
+[Install]
+WantedBy=multi-user.target

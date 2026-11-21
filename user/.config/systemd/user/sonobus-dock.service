@@ -1,0 +1,14 @@
+[Unit]
+Description=SonoBus 192 kHz receiver for qubit
+After=pipewire.service
+
+[Service]
+Type=exec
+ExecStartPre=/usr/bin/pw-metadata -n settings 0 clock.force-rate 192000
+ExecStartPre=/usr/bin/pw-metadata -n settings 0 clock.force-quantum 1024
+ExecStart=/usr/bin/pw-jack /usr/bin/sonobus
+ExecStopPost=/usr/bin/pw-metadata -n settings 0 clock.force-rate 0
+ExecStopPost=/usr/bin/pw-metadata -n settings 0 clock.force-quantum 0
+Restart=no
+KillMode=control-group
+TimeoutStopSec=8

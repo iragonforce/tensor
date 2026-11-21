@@ -1,0 +1,11 @@
+[Unit]
+Description=Poll qubit Sunshine readiness for Moonlight launch
+
+[Timer]
+OnBootSec=30s
+OnUnitActiveSec=15s
+AccuracySec=5s
+Unit=qubit-moonlight-autoconnect.service
+
+[Install]
+WantedBy=timers.target

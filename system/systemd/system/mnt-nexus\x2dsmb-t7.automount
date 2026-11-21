@@ -1,0 +1,9 @@
+[Unit]
+Description=Automount Nexus T7 SMB storage
+
+[Automount]
+Where=/mnt/nexus-smb/t7
+TimeoutIdleSec=10min
+
+[Install]
+WantedBy=multi-user.target

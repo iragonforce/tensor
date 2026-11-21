@@ -1,0 +1,9 @@
+[Unit]
+Description=Automount Nexus bulk SMB storage
+
+[Automount]
+Where=/mnt/nexus-smb/bulk
+TimeoutIdleSec=10min
+
+[Install]
+WantedBy=multi-user.target

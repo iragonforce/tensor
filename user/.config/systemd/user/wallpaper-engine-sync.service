@@ -1,0 +1,8 @@
+[Unit]
+Description=Mirror Wallpaper Engine selections onto Hyprland monitors
+
+[Service]
+ExecStart=/home/iragonforce/.local/bin/wallpaper-engine-sync
+Restart=on-failure
+RestartSec=5
+KillMode=control-group

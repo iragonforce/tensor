@@ -1,0 +1,10 @@
+[Unit]
+Description=Limit Tensor SDK and fixed controls to trusted hosts
+Before=tensor-control.service
+After=network-pre.target
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/tensor-control-guard
+RemainAfterExit=yes
+[Install]
+WantedBy=multi-user.target

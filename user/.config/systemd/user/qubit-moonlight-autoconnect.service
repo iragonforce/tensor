@@ -1,0 +1,6 @@
+[Unit]
+Description=Launch Moonlight for qubit when Sunshine becomes reachable
+
+[Service]
+Type=oneshot
+ExecStart=%h/.local/bin/qubit-auto-connect

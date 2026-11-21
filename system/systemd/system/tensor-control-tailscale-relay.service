@@ -1,0 +1,16 @@
+[Unit]
+Description=Private loopback relay for authenticated Tensor controls
+After=network-online.target tensor-control.service tailscaled.service
+Wants=network-online.target tensor-control.service
+[Service]
+DynamicUser=yes
+ExecStart=/usr/bin/python3 /usr/local/libexec/tensor-control-relay.py
+Restart=always
+RestartSec=3
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+MemoryMax=128M
+[Install]
+WantedBy=multi-user.target

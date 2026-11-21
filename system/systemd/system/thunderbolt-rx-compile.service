@@ -1,0 +1,11 @@
+[Unit]
+Description=Build experimental Thunderbolt RX kernel
+
+[Service]
+Type=oneshot
+User=iragonforce
+WorkingDirectory=/home/iragonforce/build/thunderbolt-rx-test/linux
+ExecStart=/usr/bin/bash /home/iragonforce/build/thunderbolt-rx-test/linux/compile-scheduled.sh
+Nice=10
+IOSchedulingClass=idle
+TimeoutStartSec=0

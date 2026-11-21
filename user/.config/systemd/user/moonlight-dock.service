@@ -1,0 +1,10 @@
+[Unit]
+Description=Moonlight stream from qubit
+
+[Service]
+Type=exec
+Environment=QT_QPA_PLATFORM=wayland
+ExecStart=/usr/bin/moonlight stream --resolution 3440x1440 --fps 85 --bitrate 80000 --display-mode fullscreen --video-codec HEVC --absolute-mouse 192.168.1.4 Desktop
+Restart=no
+KillMode=control-group
+TimeoutStopSec=5

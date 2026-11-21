@@ -1,0 +1,13 @@
+[Unit]
+Description=Show local Ghostty clipboard copy counts in tmux
+After=graphical-session.target
+
+[Service]
+Type=simple
+ExecStartPre=/usr/bin/rm -f %t/clipboard-indicator.initialized
+ExecStart=/usr/bin/wl-paste --no-newline --watch /home/iragonforce/.local/libexec/clipboard-indicator
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=default.target

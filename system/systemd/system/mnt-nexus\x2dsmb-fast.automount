@@ -1,0 +1,9 @@
+[Unit]
+Description=Automount Nexus fast SMB storage
+
+[Automount]
+Where=/mnt/nexus-smb/fast
+TimeoutIdleSec=10min
+
+[Install]
+WantedBy=multi-user.target

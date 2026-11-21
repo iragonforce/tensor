@@ -1,0 +1,16 @@
+[Unit]
+Description=Restore and checkpoint Tensor lighting and fan profiles
+After=openrgb.service
+Requires=openrgb.service
+PartOf=openrgb.service graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=/home/iragonforce/.local/share/tensor-control/venv/bin/python /home/iragonforce/.local/share/tensor-control/rgb-persistence.py
+Restart=on-failure
+RestartSec=10
+TimeoutStopSec=30
+UMask=0077
+
+[Install]
+WantedBy=openrgb.service
