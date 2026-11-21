@@ -145,3 +145,5 @@
 !user/.config/swaync/
 !user/.config/swaync/config.json
 !user/.config/swaync/style.css
+!user/.config/hypr/hyprland.lua
+!user/.config/hypr/hyprmoncfg-monitors.lua
