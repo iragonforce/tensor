@@ -1,0 +1,2 @@
+# I226-V detached from PCIe while idle. Disable ASPM only on this NIC's link.
+ACTION=="add", SUBSYSTEM=="pci", KERNEL=="0000:06:00.0", ATTR{vendor}=="0x8086", ATTR{device}=="0x125c", ATTR{power/control}="on", ATTR{link/l1_aspm}="0", ATTR{link/l1_1_aspm}="0", ATTR{link/l1_2_aspm}="0", ATTR{link/l1_1_pcipm}="0", ATTR{link/l1_2_pcipm}="0"

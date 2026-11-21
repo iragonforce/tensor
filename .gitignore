@@ -98,3 +98,10 @@
 !system/nfs.conf
 !system/samba/
 !system/samba/smb.conf
+!system/mkinitcpio.conf
+!system/modprobe.d/
+!system/modprobe.d/nvidia-drm.conf
+!system/udev/
+!system/udev/rules.d/
+!system/udev/rules.d/85-tensor-ethernet.rules
+!system/udev/rules.d/99-openlinkhub-hidraw.rules

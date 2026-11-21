@@ -1,0 +1,2 @@
+KERNEL=="hidraw*", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="1b1c", ATTRS{idProduct}=="0c3f", OWNER="openlinkhub", GROUP="openlinkhub", MODE="0660"
+KERNEL=="hidraw*", SUBSYSTEM=="hidraw", ATTRS{idVendor}=="1b1c", ATTRS{idProduct}=="0c32", OWNER="openlinkhub", GROUP="openlinkhub", MODE="0660"
