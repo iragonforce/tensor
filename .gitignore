@@ -156,3 +156,7 @@
 !user/.config/wireplumber/wireplumber.conf.d/00-plasma-pa.conf
 !user/.config/wireplumber/wireplumber.conf.d/98-hide-unused-audio.conf
 !user/.config/wireplumber/wireplumber.conf.d/99-usb-dac-hires.conf
+!system/shairport-sync.conf
+!user/.config/sunshine/
+!user/.config/sunshine/sunshine.conf
+!user/.config/sunshine/apps.json
