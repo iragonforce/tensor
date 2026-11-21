@@ -1,0 +1,2 @@
+#!/bin/sh
+case "$2" in up|reapply|dhcp4-change) /usr/local/sbin/homelab-wol-enable ;; esac

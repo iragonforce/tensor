@@ -1,0 +1,25 @@
+# Static information about the filesystems.
+# See fstab(5) for details.
+
+# <file system> <dir> <type> <options> <dump> <pass>
+# /dev/nvme0n1p3 LABEL=arch-sys
+UUID=ba1e9f2d-fb61-46d0-86f6-25cb65602d6f	/         	btrfs     	rw,noatime,compress=zstd:3,ssd,discard=async,space_cache=v2,subvol=/@	0 0
+
+# /dev/nvme0n1p1 LABEL=efi
+UUID=1094-6B16      	/boot     	vfat      	rw,relatime,fmask=0022,dmask=0022,codepage=437,iocharset=ascii,shortname=mixed,utf8,errors=remount-ro	0 2
+
+# /dev/nvme0n1p3 LABEL=arch-sys
+UUID=ba1e9f2d-fb61-46d0-86f6-25cb65602d6f	/home     	btrfs     	rw,noatime,compress=zstd:3,ssd,discard=async,space_cache=v2,subvol=/@home	0 0
+
+# /dev/nvme1n1p1 LABEL=arch-data
+UUID=ae5643dc-1233-44b0-8ccc-17993f6c90eb	/home/iragonforce/data	btrfs     	rw,noatime,compress=zstd:3,ssd,discard=async,space_cache=v2,subvol=/	0 0
+
+# /dev/nvme0n1p3 LABEL=arch-sys
+UUID=ba1e9f2d-fb61-46d0-86f6-25cb65602d6f	/.snapshots	btrfs     	rw,noatime,compress=zstd:3,ssd,discard=async,space_cache=v2,subvol=/@snapshots	0 0
+
+# /dev/nvme0n1p2 LABEL=swap
+UUID=2524751e-551b-4738-9e62-591429c55569	none      	swap      	defaults  	0 0
+
+100.103.67.56:/Users/iragonforce /home/qubit nfs rw,nofail,_netdev,x-systemd.automount,x-systemd.idle-timeout=600,x-systemd.mount-timeout=5s,x-systemd.device-timeout=5s,vers=3,nolock,proto=tcp,timeo=14,retrans=2 0 0
+192.168.1.2:/srv/nfs/fast	/home/nexus/fast	nfs	rw,nofail,_netdev,x-systemd.automount,x-systemd.idle-timeout=600,proto=tcp,timeo=14,retrans=2,vers=3,hard,resvport,nosuid,nodev	0	0
+192.168.1.2:/srv/nfs/bulk	/home/nexus/bulk	nfs	rw,nofail,_netdev,x-systemd.automount,x-systemd.idle-timeout=600,proto=tcp,timeo=14,retrans=2,vers=3,hard,resvport,nosuid,nodev	0	0
