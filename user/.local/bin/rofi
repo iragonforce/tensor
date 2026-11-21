@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+# Launch Rofi on the configured main display. See rofi(1) for source and integration details.
+# Keep every Rofi mode and menu on Tensor's main ultrawide.
+exec /usr/bin/rofi -m DP-5 "$@"

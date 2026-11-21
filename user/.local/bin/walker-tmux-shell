@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# Run an interactive Zsh for the Walker/tmux integration. See walker-tmux-shell(1) for source and integration details.
+if [ "${1-}" = '--help' ] && [ "$#" -eq 1 ]; then
+  cat <<'OPS_USAGE_TEXT'
+Run an interactive Zsh for the Walker/tmux integration.
+Usage: walker-tmux-shell 
+
+Source: hosts/tensor/files/.local/bin/walker-tmux-shell in ~/ops
+See man walker-tmux-shell for the existing call sites and argument handling.
+OPS_USAGE_TEXT
+  exit 0
+fi
+
+command_text="${WALKER_COMMAND:-}"
+
+if [[ -n "$command_text" ]]; then
+    zsh -ic "$command_text"
+    status=$?
+    printf '\n[exit status: %s]\n' "$status"
+fi
+
+exec zsh -i

@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# Dispatch the configured idle action while respecting the desktop media state. See tensor-idle-action(1) for source and integration details.
+if [ "${1-}" = '--help' ] && [ "$#" -eq 1 ]; then
+  cat <<'OPS_USAGE_TEXT'
+Dispatch the configured idle action while respecting the desktop media state.
+Usage: tensor-idle-action 
+
+Source: hosts/tensor/files/.local/bin/idle-action in ~/ops
+See man tensor-idle-action for the existing call sites and argument handling.
+OPS_USAGE_TEXT
+  exit 0
+fi
+set -euo pipefail
+
+if [[ -f "$HOME/.local/state/tensor-caffeinate/lock-only" ]]; then
+  exec "$HOME/.config/hypr/scripts/lock-manual.sh"
+elif pidof hyprlock >/dev/null 2>&1; then
+  # Workaround: Hyprlock can crash across DPMS power cycles.
+  # Preserve the active session lock without powering off outputs.
+  echo "Visual standby skipped: Hyprlock is active"
+  exit 0
+else
+  exec "$HOME/.local/bin/hibernate" enter
+fi

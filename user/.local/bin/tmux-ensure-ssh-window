@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# Ensure the configured SSH window exists using exact tmux window indexes. See tmux-ensure-ssh-window(1) for source and integration details.
+if [ "${1-}" = '--help' ] && [ "$#" -eq 1 ]; then
+  cat <<'OPS_USAGE_TEXT'
+Ensure the configured SSH window exists using exact tmux window indexes.
+Usage: tmux-ensure-ssh-window  [ARGUMENT ...]
+
+Source: shared/scripts/tmux-ensure-ssh-window in ~/ops
+See man tmux-ensure-ssh-window for the existing call sites and argument handling.
+OPS_USAGE_TEXT
+  exit 0
+fi
+set -euo pipefail
+session="${1:?session name required}"
+index=999
+
+# Match indexes exactly. display-message -t may resolve a different window
+# when the requested target does not exist, so it is not an existence test.
+existing_target=""
+existing_zero=""
+while read -r window_index window_name; do
+  case "$window_index" in
+    0) existing_zero="$window_name" ;;
+    999) existing_target="$window_name" ;;
+  esac
+done < <(tmux list-windows -t "$session" -F '#{window_index} #{window_name}')
+if [[ -n "$existing_target" && "$existing_target" != ssh ]]; then
+  printf 'Refusing to overwrite %s:%s (%s)\n' "$session" "$index" "$existing_target" >&2
+  exit 1
+fi
+if [[ "$existing_zero" == ssh ]]; then
+  if [[ -n "$existing_target" ]]; then
+    printf 'Two SSH dashboard windows exist; no changes made\n' >&2
+    exit 1
+  fi
+  # Moves the existing window and its live pane, without restarting it.
+  tmux move-window -s "${session}:0" -t "${session}:${index}"
+elif [[ -z "$existing_target" ]]; then
+  tmux new-window -d -t "${session}:${index}" -n ssh -c "$HOME" \
+    "$HOME/.local/bin/tmux-ssh-dashboard"
+fi
+
+tmux set-window-option -t "${session}:${index}" automatic-rename off
+tmux rename-window -t "${session}:${index}" ssh
+# Only this window has a custom label; other windows keep their styling.
+tmux set-window-option -t "${session}:${index}" window-status-format ' 0:[ssh] '
+tmux set-window-option -t "${session}:${index}" window-status-current-format ' 0:[ssh] '

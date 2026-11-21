@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+# Launch SSH through the existing tmux integration. See sshr(1) for source and integration details.
+# Shared optional SSH launcher. Native ssh remains unchanged for every user.
+set -euo pipefail
+if (( EUID != 0 )) && [[ -n "${TMUX:-}" && -x "$HOME/.local/bin/tmux-ssh" ]]; then
+  exec "$HOME/.local/bin/tmux-ssh" "$@"
+fi
+exec /usr/bin/ssh "$@"

@@ -1,0 +1,42 @@
+#!/bin/bash
+# Read the USB DAC capability and selected sink from ALSA and audio state. See get-dac-cap(1) for source and integration details.
+if [ "${1-}" = '--help' ] && [ "$#" -eq 1 ]; then
+  cat <<'OPS_USAGE_TEXT'
+Read the USB DAC capability and selected sink from ALSA and audio state.
+Usage: get-dac-cap 
+
+Source: hosts/tensor/files/.local/bin/get-dac-cap in ~/ops
+See man get-dac-cap for the existing call sites and argument handling.
+OPS_USAGE_TEXT
+  exit 0
+fi
+# Outputs "MAX_RATE MAX_BITS SINK_NAME" for the highest-capability USB audio sink.
+# Parses /proc/asound/card3/stream* for hardware truth (card 3 = Beyerdynamic DAC).
+
+PROC_DIR="/proc/asound/card3"
+MAX_RATE=0
+MAX_BITS=0
+
+for stream in "$PROC_DIR"/stream*; do
+  [[ -f "$stream" ]] || continue
+  while IFS= read -r line; do
+    if [[ "$line" =~ ^[[:space:]]*Rates: ]]; then
+      for tok in ${line#*:}; do
+        v=${tok//,/}
+        [[ "$v" =~ ^[0-9]+$ ]] && (( v > MAX_RATE )) && MAX_RATE=$v
+      done
+    fi
+    if [[ "$line" =~ ^[[:space:]]*Bits: ]]; then
+      v=${line##* }
+      [[ "$v" =~ ^[0-9]+$ ]] && (( v > 0 && v > MAX_BITS )) && MAX_BITS=$v
+    fi
+  done < "$stream"
+done
+
+if (( MAX_RATE >= 384000 )); then
+  SINK="alsa_output.usb-Generic_USB_Audio-00.HiFi__Headphones__sink"
+else
+  SINK="alsa_output.usb-Generic_USB_Audio-00.HiFi__Speaker__sink"
+fi
+
+echo "${MAX_RATE} ${MAX_BITS} ${SINK}"

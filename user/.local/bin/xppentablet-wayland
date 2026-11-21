@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# Launch the XP-Pen application through its existing XWayland setup. See xppentablet-wayland(1) for source and integration details.
+
+# XP-Pen tablet launcher with XWayland support for Hyprland.
+if [[ -z "${DISPLAY:-}" && -n "${WAYLAND_DISPLAY:-}" ]]; then
+  for i in {0..9}; do
+    if ! pgrep -f "Xwayland :$i" >/dev/null 2>&1; then
+      export DISPLAY=":$i"
+      Xwayland "$DISPLAY" >/dev/null 2>&1 &
+      sleep 1
+      break
+    fi
+  done
+fi
+
+export QT_QPA_PLATFORM=xcb
+unset WAYLAND_DISPLAY
+unset WAYLAND_SOCKET
+
+exec /usr/lib/pentablet/PenTablet.sh "$@"

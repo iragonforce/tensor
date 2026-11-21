@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+# Resolve a canonical homelab host label for the existing SSH launcher. See ssh-resolve-target(1) for source and integration details.
+if [ "${1-}" = '--help' ] && [ "$#" -eq 1 ]; then
+  cat <<'OPS_USAGE_TEXT'
+Resolve a canonical homelab host label for the existing SSH launcher.
+Usage: ssh-resolve-target  [ARGUMENT ...]
+
+Source: shared/scripts/ssh-resolve-target in ~/ops
+See man ssh-resolve-target for the existing call sites and argument handling.
+OPS_USAGE_TEXT
+  exit 0
+fi
+set -euo pipefail
+
+label="${1:?host label required}"
+
+try_targets() {
+  local fallback="${1:?fallback required}"
+  shift
+
+  local target
+  for target in "$@"; do
+    if ssh \
+      -o BatchMode=yes \
+      -o ConnectTimeout=3 \
+      -o StrictHostKeyChecking=no \
+      -o UserKnownHostsFile=/dev/null \
+      "$target" \
+      "printf ok" >/dev/null 2>&1; then
+      printf '%s\n' "$target"
+      exit 0
+    fi
+  done
+
+  printf '%s\n' "$fallback"
+}
+
+case "$label" in
+  qubit)
+    try_targets qubit qubit 192.168.1.4 192.168.1.5 100.103.67.56
+    ;;
+  tensor)
+    try_targets tensor tensor 192.168.1.3 100.114.178.50
+    ;;
+  nexus)
+    try_targets nexus nexus 192.168.1.2
+    ;;
+  *)
+    printf '%s\n' "$label"
+    ;;
+esac

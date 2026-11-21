@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+# Capture notification integration state for the existing Hyprland setup. See hyprland-notify-swaync-capture(1) for source and integration details.
+if [ "${1-}" = '--help' ] && [ "$#" -eq 1 ]; then
+  cat <<'OPS_USAGE_TEXT'
+Capture notification integration state for the existing Hyprland setup.
+Usage: hyprland-notify-swaync-capture 
+
+Source: hosts/tensor/files/.local/bin/hyprland-notify-swaync-capture in ~/ops
+See man hyprland-notify-swaync-capture for the existing call sites and argument handling.
+OPS_USAGE_TEXT
+  exit 0
+fi
+set -euo pipefail
+
+CONFIG="${HYPR_NOTIFY_CONFIG:-$HOME/.local/state/hyprland-notify-api/config.json}"
+URL="${HYPR_NOTIFY_URL:-http://127.0.0.1:8787/hooks/swaync}"
+export CONFIG
+
+if [[ ! -r "$CONFIG" ]]; then
+  exit 0
+fi
+
+TOKEN="$(python3 - <<'PY'
+import json
+import os
+
+with open(os.environ["CONFIG"], "r", encoding="utf-8") as f:
+    print(json.load(f).get("token", ""))
+PY
+)"
+
+if [[ -z "$TOKEN" ]]; then
+  exit 0
+fi
+
+PAYLOAD="$(python3 - <<'PY'
+import json
+import os
+
+payload = {
+    "id": os.environ.get("SWAYNC_ID", ""),
+    "app_name": os.environ.get("SWAYNC_APP_NAME", ""),
+    "summary": os.environ.get("SWAYNC_SUMMARY", ""),
+    "body": os.environ.get("SWAYNC_BODY", ""),
+    "urgency": os.environ.get("SWAYNC_URGENCY", ""),
+    "category": os.environ.get("SWAYNC_CATEGORY", ""),
+    "replaces_id": os.environ.get("SWAYNC_REPLACES_ID", ""),
+    "desktop_entry": os.environ.get("SWAYNC_DESKTOP_ENTRY", ""),
+    "time": os.environ.get("SWAYNC_TIME", ""),
+}
+print(json.dumps(payload, ensure_ascii=False))
+PY
+)"
+
+curl -fsS \
+  -H "Authorization: Bearer ${TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d "$PAYLOAD" \
+  "$URL" >/dev/null || true

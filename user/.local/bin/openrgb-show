@@ -1,0 +1,21 @@
+#!/bin/bash
+# Show or hide the OpenRGB settings workspace. See openrgb-show(1) for source and integration details.
+if [ "${1-}" = '--help' ] && [ "$#" -eq 1 ]; then
+  cat <<'OPS_USAGE_TEXT'
+Show or hide the OpenRGB settings workspace.
+Usage: openrgb-show 
+
+Source: hosts/tensor/files/.local/bin/openrgb-show in ~/ops
+See man openrgb-show for the existing call sites and argument handling.
+OPS_USAGE_TEXT
+  exit 0
+fi
+# Toggle OpenRGB settings window via Hyprland special workspace.
+# Unset global Qt style overrides that break OpenRGB's color palette.
+
+if ! pgrep -x openrgb > /dev/null; then
+    env QT_STYLE_OVERRIDE="" QT_QPA_PLATFORMTHEME="" openrgb &
+    sleep 2
+fi
+
+hyprctl dispatch togglespecialworkspace openrgb

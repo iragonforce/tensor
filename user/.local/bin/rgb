@@ -1,0 +1,3 @@
+#!/bin/sh
+# Dispatch RGB control to the maintained tensor-control Python implementation. See rgb(1) for source and integration details.
+exec /home/iragonforce/.local/share/tensor-control/venv/bin/python /home/iragonforce/.local/share/tensor-control/tensor-rgb.py "$@"

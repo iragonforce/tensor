@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# Launch Dolphin with the configured stylesheet. See dolphin(1) for source and integration details.
+export QT_QPA_PLATFORMTHEME=qt6ct
+export QT_STYLE_OVERRIDE=Breeze
+exec /usr/bin/dolphin -stylesheet "$HOME/.config/dolphin/black-background.qss" "$@"

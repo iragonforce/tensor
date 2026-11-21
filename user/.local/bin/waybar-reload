@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+# Reload Waybar with the active desktop environment. See waybar-reload(1) for source and integration details.
+if [ "${1-}" = '--help' ] && [ "$#" -eq 1 ]; then
+  cat <<'OPS_USAGE_TEXT'
+Reload Waybar with the active desktop environment.
+Usage: waybar-reload  [ARGUMENT ...]
+
+Source: hosts/tensor/files/.local/bin/waybar-reload in ~/ops
+See man waybar-reload for the existing call sites and argument handling.
+OPS_USAGE_TEXT
+  exit 0
+fi
+set -euo pipefail
+
+export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+
+hydrate_hypr_env() {
+  if [[ -n "${HYPRLAND_INSTANCE_SIGNATURE:-}" && -n "${WAYLAND_DISPLAY:-}" ]]; then
+    return 0
+  fi
+
+  local instance_json
+  instance_json="$(hyprctl instances -j 2>/dev/null || true)"
+  [[ -n "$instance_json" ]] || {
+    printf 'waybar-reload: no running Hyprland instance found\n' >&2
+    exit 1
+  }
+
+  eval "$(python3 - <<'PY' "$instance_json"
+import json
+import shlex
+import sys
+
+try:
+    data = json.loads(sys.argv[1])[0]
+except Exception:
+    raise SystemExit(1)
+
+instance = data.get("instance")
+wl_socket = data.get("wl_socket")
+if instance:
+    print(f"export HYPRLAND_INSTANCE_SIGNATURE={shlex.quote(instance)}")
+if wl_socket:
+    print(f"export WAYLAND_DISPLAY={shlex.quote(wl_socket)}")
+PY
+)"
+}
+
+hydrate_hypr_env
+pkill -x waybar 2>/dev/null || true
+nohup "$HOME/.config/hypr/scripts/start-waybar.sh" >"$HOME/.local/state/hypr/waybar-reload.log" 2>&1 &
+sleep 1
+
+if pgrep -x waybar >/dev/null 2>&1; then
+  printf 'waybar-reload: restarted Waybar\n'
+else
+  printf 'waybar-reload: Waybar did not start; see ~/.local/state/hypr/waybar-reload.log\n' >&2
+  exit 1
+fi

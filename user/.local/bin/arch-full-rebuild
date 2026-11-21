@@ -1,0 +1,89 @@
+#!/usr/bin/env bash
+# Run the existing Arch package rebuild procedure with its log and noninteractive input. See arch-full-rebuild(1) for source and integration details.
+if [ "${1-}" = '--help' ] && [ "$#" -eq 1 ]; then
+  cat <<'OPS_USAGE_TEXT'
+Run the existing Arch package rebuild procedure with its log and noninteractive input.
+Usage: arch-full-rebuild 
+
+Source: hosts/tensor/files/.local/bin/arch-full-rebuild in ~/ops
+See man arch-full-rebuild for the existing call sites and argument handling.
+OPS_USAGE_TEXT
+  exit 0
+fi
+set -Eeuo pipefail
+(( EUID != 0 )) || { echo "Run without sudo"; exit 1; }
+(( EUID != 0 )) || { echo "Run without sudo"; exit 1; }
+(( EUID != 0 )) || { echo "Run without sudo"; exit 1; }
+(( EUID != 0 )) || { echo "Run without sudo"; exit 1; }
+
+LOG="$HOME/arch-rebuild-$(date +%Y%m%d-%H%M%S).log"
+
+exec > >(tee -a "$LOG") 2>&1
+
+trap 'rc=$?; echo "FAILED (exit $rc). No shutdown. Log: $LOG"' ERR
+
+echo "=== ARCH FULL REBUILD STARTED ==="
+date
+
+# Authenticate once, before detaching tmux
+sudo -v
+
+# Prevent subsequent commands from requesting input
+exec </dev/null
+
+# Keep sudo credentials valid throughout long builds
+(
+    while sleep 60; do
+        sudo -n -v || exit 1
+    done
+) &
+KEEPALIVE=$!
+trap 'kill "$KEEPALIVE" 2>/dev/null || true' EXIT
+
+# Fresh package cache, preserving existing cached packages
+CACHE="$(sudo -n mktemp -d /var/cache/pacman-rebuild.XXXXXXXX)"
+sudo -n chown alpm:alpm "$CACHE"
+sudo -n chown alpm:alpm "$CACHE"
+sudo -n chown alpm:alpm "$CACHE"
+sudo -n chown alpm:alpm "$CACHE"
+echo "Fresh download cache: $CACHE"
+
+# 1. Update official repositories and packages
+echo "=== UPDATING SYSTEM ==="
+sudo -n pacman -Syu --noconfirm --cachedir "$CACHE"
+
+# 2. Redownload and reinstall all official packages
+echo "=== REINSTALLING OFFICIAL PACKAGES ==="
+mapfile -t OFFICIAL < <(pacman -Qqn)
+
+if ((${#OFFICIAL[@]})); then
+    sudo -n pacman -S --noconfirm \
+        --cachedir "$CACHE" -- "${OFFICIAL[@]}"
+fi
+
+# 3. Rebuild all foreign/AUR packages
+echo "=== REBUILDING AUR PACKAGES ==="
+mapfile -t AUR < <(pacman -Qqm)
+
+if ((${#AUR[@]})); then
+    yay -S --aur \
+        --noconfirm \
+        --sudoflags "-n" \
+        --answerclean All \
+        --answerdiff None \
+        --answeredit None \
+        --redownloadall \
+        --rebuildall \
+        "${AUR[@]}"
+fi
+
+# 4. Final verification
+echo "=== FINAL PACKAGE CHECK ==="
+pacman -Qkk
+
+echo "=== ALL INSTALLATION STAGES COMPLETED ==="
+date
+echo "Log: $LOG"
+
+# 5. Power off after successful completion
+sudo -n systemctl poweroff

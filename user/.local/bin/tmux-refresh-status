@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+# Provide the retained compatibility entry point without global status mutation. See tmux-refresh-status(1) for source and integration details.
+if [ "${1-}" = '--help' ] && [ "$#" -eq 1 ]; then
+  cat <<'OPS_USAGE_TEXT'
+Provide the retained compatibility entry point without global status mutation.
+Usage: tmux-refresh-status 
+
+Source: shared/scripts/tmux-refresh-status in ~/ops
+See man tmux-refresh-status for the existing call sites and argument handling.
+OPS_USAGE_TEXT
+  exit 0
+fi
+# Compatibility shim: no relay or global status mutation.
+tmux refresh-client -S >/dev/null 2>&1 || true

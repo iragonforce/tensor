@@ -1,0 +1,22 @@
+#!/bin/bash
+# Serialize the visual-standby shortcut so repeated keypresses do not race. See tensor-standby-key(1) for source and integration details.
+if [ "${1-}" = '--help' ] && [ "$#" -eq 1 ]; then
+  cat <<'OPS_USAGE_TEXT'
+Serialize the visual-standby shortcut so repeated keypresses do not race.
+Usage: tensor-standby-key  [ARGUMENT ...]
+
+Source: hosts/tensor/files/.local/bin/standby-key in ~/ops
+See man tensor-standby-key for the existing call sites and argument handling.
+OPS_USAGE_TEXT
+  exit 0
+fi
+set -euo pipefail
+# Serialize shortcuts so a repeated Super+L cannot lock during restoration.
+exec 9>/run/user/1000/tensor-standby-key.lock
+flock -n 9 || exit 0
+if [[ -f /run/user/1000/tensor-visual-standby.json ]]; then
+    exec /home/iragonforce/.local/bin/hibernate resume
+fi
+if [[ "${1:-ctrl}" == super ]]; then
+    exec /home/iragonforce/.config/hypr/scripts/lock-manual.sh
+fi

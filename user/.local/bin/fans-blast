@@ -1,0 +1,14 @@
+#!/bin/bash
+# Apply the existing high-speed fan command; hardware effects require physical validation. See fans-blast(1) for source and integration details.
+if [ "${1-}" = '--help' ] && [ "$#" -eq 1 ]; then
+  cat <<'OPS_USAGE_TEXT'
+Apply the existing high-speed fan command; hardware effects require physical validation.
+Usage: fans-blast 
+
+Source: hosts/tensor/files/.local/bin/fans-blast in ~/ops
+See man fans-blast for the existing call sites and argument handling.
+OPS_USAGE_TEXT
+  exit 0
+fi
+openrgb --noautoconnect --profile Off >/dev/null 2>&1 &
+python3 /home/iragonforce/.config/hypr/scripts/olh-profile.py BLAST

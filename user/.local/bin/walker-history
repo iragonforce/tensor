@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+# Select a history entry and launch it through the existing Walker/tmux integration. See walker-history(1) for source and integration details.
+if [ "${1-}" = '--help' ] && [ "$#" -eq 1 ]; then
+  cat <<'OPS_USAGE_TEXT'
+Select a history entry and launch it through the existing Walker/tmux integration.
+Usage: walker-history 
+
+Source: hosts/tensor/files/.local/bin/walker-history in ~/ops
+See man walker-history for the existing call sites and argument handling.
+OPS_USAGE_TEXT
+  exit 0
+fi
+set -o pipefail
+
+export ATUIN_SESSION="${ATUIN_SESSION:-$(atuin uuid)}"
+
+selected="$(
+  atuin history list --cmd-only |
+    sed -n 's/^\[archcore\][[:space:]]*//p' |
+    awk 'NF && !seen[$0]++' |
+    walker --dmenu --prompt "Command History"
+)" || exit 0
+
+[[ -n "$selected" ]] || exit 0
+
+exec "$HOME/.local/bin/walker-tmux" "$selected"

@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# Launch or reuse the managed Neovim RPC server. See tmux-managed-nvim(1) for source and integration details.
+
+set -euo pipefail
+
+real_nvim="${TMUX_REAL_NVIM_BIN:-$(command -v nvim)}"
+
+if [[ -z "${TMUX:-}" ]]; then
+  exec "$real_nvim" "$@"
+fi
+
+session_name="$(tmux display-message -p '#S')"
+window_target="${session_name}:2"
+socket_dir="${XDG_CACHE_HOME:-$HOME/.cache}/tmux-managed"
+socket_path="$socket_dir/${session_name}.nvim.sock"
+nvim_cmd="LANG=C.UTF-8 LC_ALL=C.UTF-8 TERM=tmux-256color COLORTERM=truecolor TERM_PROGRAM=tmux exec $real_nvim --listen '$socket_path'"
+mkdir -p "$socket_dir"
+
+if ! tmux list-windows -t "$session_name" -F '#I' | grep -qx '2'; then
+  tmux new-window -d -t "$window_target" -n nvim -c "$PWD" "$nvim_cmd"
+fi
+
+tmux rename-window -t "$window_target" nvim >/dev/null 2>&1 || true
+
+if [[ ! -S "$socket_path" ]]; then
+  tmux respawn-window -k -t "$window_target" -c "$PWD" "$nvim_cmd"
+
+  for _ in $(seq 1 40); do
+    [[ -S "$socket_path" ]] && break
+    sleep 0.1
+  done
+fi
+
+tmux select-window -t "$window_target"
+"$HOME/.local/bin/tmux-refresh-status"
+
+if [[ $# -eq 0 ]]; then
+  exit 0
+fi
+
+exec "$real_nvim" --server "$socket_path" --remote "$@"

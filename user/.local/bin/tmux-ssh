@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+# Detach the invoking tmux client and launch the selected remote SSH session. See tmux-ssh(1) for source and integration details.
+
+set -euo pipefail
+
+ssh_bin="$(command -v ssh 2>/dev/null || true)"
+tmux_bin="$(command -v tmux 2>/dev/null || true)"
+
+if [[ -z "$ssh_bin" ]]; then
+  printf 'ssh is not available\n' >&2
+  exit 127
+fi
+
+# Outside tmux, behave exactly like ssh.
+if [[ -z "${TMUX:-}" ]]; then
+  exec "$ssh_bin" "$@"
+fi
+
+if [[ -z "$tmux_bin" ]]; then
+  printf 'tmux is not available\n' >&2
+  exit 127
+fi
+
+tmux_socket="${TMUX%%,*}"
+
+session_name="$("$tmux_bin" display-message -p -t "${TMUX_PANE:-}" '#{session_name}')"
+client_name="$("$tmux_bin" display-message -p -t "${TMUX_PANE:-}" '#{client_name}')"
+pane_path="$("$tmux_bin" display-message -p -t "${TMUX_PANE:-}" '#{pane_current_path}')"
+
+if [[ -z "$session_name" || -z "$client_name" ]]; then
+  printf 'cannot identify the current tmux client\n' >&2
+  exit 1
+fi
+
+# detach-client -E runs its command on the terminal after tmux has detached.
+# Put the command and its arguments in a private runner so every ssh argument is
+# preserved exactly, including spaces and shell metacharacters.
+umask 077
+runner="$(mktemp /tmp/tmux-ssh.XXXXXX)"
+
+cleanup_runner() {
+  rm -f -- "$runner"
+}
+trap cleanup_runner EXIT
+
+{
+  printf '#!/usr/bin/env bash\n'
+  printf 'rm -f -- %q\n' "$runner"
+  printf 'cd -- %q\n' "$pane_path"
+  if [[ -n "${SSH_AUTH_SOCK+x}" ]]; then
+    printf 'export SSH_AUTH_SOCK=%q\n' "$SSH_AUTH_SOCK"
+  fi
+  printf 'env -u TMUX %q' "$ssh_bin"
+  if (($#)); then
+    printf ' %q' "$@"
+  fi
+  printf '\nssh_status=$?\n'
+  printf 'env -u TMUX %q -S %q attach-session -t %q\n' "$tmux_bin" "$tmux_socket" "$session_name"
+  printf 'attach_status=$?\n'
+  printf 'if (( attach_status != 0 )); then exit "$attach_status"; fi\n'
+  printf 'exit "$ssh_status"\n'
+} >"$runner"
+
+chmod 700 "$runner"
+
+trap - EXIT
+if ! "$tmux_bin" detach-client -t "$client_name" -E "/usr/bin/env bash $runner"; then
+  cleanup_runner
+  exit 1
+fi

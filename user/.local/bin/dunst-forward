@@ -1,0 +1,42 @@
+#!/bin/bash
+# Forward notifications through the existing authorized notification integration. See dunst-forward(1) for source and integration details.
+if [ "${1-}" = '--help' ] && [ "$#" -eq 1 ]; then
+  cat <<'OPS_USAGE_TEXT'
+Forward notifications through the existing authorized notification integration.
+Usage: dunst-forward 
+
+Source: hosts/tensor/files/.local/bin/dunst-forward in ~/ops
+See man dunst-forward for the existing call sites and argument handling.
+OPS_USAGE_TEXT
+  exit 0
+fi
+# Forward dunst notifications to datacrafter's webhook-notify server.
+# Called by dunst via the [forward_to_mac] rule with env vars set.
+
+DATACRAFTER="192.168.1.4"
+PORT=9876
+
+# Build JSON safely using Python to handle quotes/escaping
+python3 - << PYEOF
+import json, urllib.request, os, sys
+
+title = os.environ.get("DUNST_SUMMARY", "archcore")
+body  = os.environ.get("DUNST_BODY", "")
+app   = os.environ.get("DUNST_APP_NAME", "archcore")
+
+# Strip pango/HTML tags dunst may include
+import re
+body = re.sub(r"<[^>]+>", "", body)
+
+payload = json.dumps({"title": title, "body": body, "app": app}).encode()
+req = urllib.request.Request(
+    f"http://${DATACRAFTER}:${PORT}/webhook/archcore",
+    data=payload,
+    headers={"Content-Type": "application/json"},
+    method="POST",
+)
+try:
+    urllib.request.urlopen(req, timeout=3)
+except Exception:
+    sys.exit(0)  # never block dunst
+PYEOF

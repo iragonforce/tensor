@@ -1,0 +1,74 @@
+#!/usr/bin/env python3
+# Browse the existing Wallpaper Engine catalog and selection. See wallpaper-engine-browser(1) for source and integration details.
+"""Open the Steam browser and persist choices for the native Wayland renderer."""
+
+if __name__ == "__main__":
+    import sys as _ops_sys
+    if _ops_sys.argv[1:] == ["--help"]:
+        print('Browse the existing Wallpaper Engine catalog and selection.\nUsage: wallpaper-engine-browser \n\nSource: hosts/tensor/files/.local/bin/wallpaper-engine-browser in ~/ops\nSee man wallpaper-engine-browser for the existing call sites and argument handling.')
+        raise SystemExit(0)
+import os
+from pathlib import Path
+import subprocess
+import time
+
+home = Path.home()
+install = home / 'data/steamapps/common/wallpaper_engine'
+scripts = install / 'ui/dist/scripts/scripts.js'
+marker = 'W.browserSettings.linuxwallpaperselections[t]={file:e.file}'
+original = 'j.callDeferred("browseWallpaperObject","selectWallpaper",e.file,t,e.overridetype)'
+replacement = ('W.browserSettings.linuxwallpaperselections='
+               'W.browserSettings.linuxwallpaperselections||{},'
+               + marker + ',' + original)
+source = scripts.read_text()
+changed = False
+if marker not in source:
+    if source.count(original) != 1:
+        raise SystemExit('Wallpaper Engine UI changed; the Linux selection hook needs updating.')
+    source = source.replace(original, replacement)
+    changed = True
+
+# The Windows browser normally closes on a wallpaper double-click.
+# Selection already applies through the Linux hook; keep the picker available.
+close_on_double = 'case"dbl":o&&"folder"===o.type||W.callbackOk(!0)'
+keep_open = 'case"dbl":/* linux-picker-keep-open */break'
+if keep_open not in source:
+    if source.count(close_on_double) != 1:
+        raise SystemExit('Wallpaper Engine UI changed; the picker hook needs updating.')
+    source = source.replace(close_on_double, keep_open)
+    changed = True
+if changed:
+    scripts.write_text(source)
+
+# Windows playback can fail under Proton. The saved Linux choice is sufficient.
+native_disabled = 'void 0/* linux-native-renderer-only */'
+if native_disabled not in source:
+    if source.count(original) != 1:
+        raise SystemExit('Wallpaper Engine UI changed; the playback hook needs updating.')
+    source = source.replace(original, native_disabled)
+    scripts.write_text(source)
+
+subprocess.run(['systemctl', '--user', 'start', 'wallpaper-engine-sync.service'], check=True)
+# Steam stays running after launching a game. Waiting for the Steam client here
+# prevents the browser command below from ever running.
+wallpaper_running = subprocess.run(
+    ['pgrep', '-u', str(os.getuid()), '-x', 'wallpaper64.exe'],
+    stdout=subprocess.DEVNULL).returncode == 0
+if not wallpaper_running:
+    subprocess.Popen(['steam', '-applaunch', '431960'],
+                     stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                     start_new_session=True)
+# A cold Steam start can include login, updates, or shader processing.
+for _ in range(360):
+    if subprocess.run(['pgrep', '-u', str(os.getuid()), '-x', 'wallpaper64.exe'],
+                      stdout=subprocess.DEVNULL).returncode == 0:
+        break
+    time.sleep(.5)
+else:
+    raise SystemExit('Wallpaper Engine did not start; check Steam.')
+
+env = os.environ.copy()
+env['WINEPREFIX'] = str(home / 'data/steamapps/compatdata/431960/pfx')
+wine = home / 'data/steamapps/common/Proton - Experimental/files/bin/wine'
+subprocess.run([str(wine), str(install / 'wallpaper64.exe'), '-showbrowse'],
+               env=env, cwd=install, check=True)

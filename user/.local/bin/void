@@ -1,0 +1,23 @@
+#!/bin/sh
+# Connect to or control the existing Void virtual machine. See void(1) for source and integration details.
+if [ "${1-}" = '--help' ] && [ "$#" -eq 1 ]; then
+  cat <<'OPS_USAGE_TEXT'
+Connect to or control the existing Void virtual machine.
+Usage: void  [ARGUMENT ...]
+*) echo 'Usage: void [ssh|on|off|status]'; exit 2 ;;
+Source: shared/scripts/void in ~/ops
+See man void for the existing call sites and argument handling.
+OPS_USAGE_TEXT
+  exit 0
+fi
+set -eu
+case "${1:-ssh}" in
+  ssh) exec ssh void ;;
+  on|off|status)
+    if [ "$(uname -s)" = Linux ] && [ "$(cat /etc/hostname 2>/dev/null)" = nexus ]; then
+      exec sudo -n /usr/local/sbin/void-vm-control "$1"
+    else
+      exec ssh nexus "sudo -n /usr/local/sbin/void-vm-control $1"
+    fi ;;
+  *) echo 'Usage: void [ssh|on|off|status]'; exit 2 ;;
+esac

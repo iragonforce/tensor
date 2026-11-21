@@ -1,0 +1,35 @@
+#!/usr/bin/env python3
+# Dispatch the configured MX Master mouse action. See mx-master-action(1) for source and integration details.
+"""MX Master gestures use Hyprland directly, without synthesizing keyboard input."""
+
+if __name__ == "__main__":
+    import sys as _ops_sys
+    if _ops_sys.argv[1:] == ["--help"]:
+        print('Dispatch the configured MX Master mouse action.\nUsage: mx-master-action  [ARGUMENT ...]\n\nSource: hosts/tensor/files/.local/bin/mx-master-action in ~/ops\nSee man mx-master-action for the existing call sites and argument handling.')
+        raise SystemExit(0)
+import json
+import os
+import subprocess
+import sys
+
+actions = {
+    'previous': 'hl.dsp.focus({workspace="e-1"})',
+    'next': 'hl.dsp.focus({workspace="e+1"})',
+    'fullscreen': 'hl.dsp.window.fullscreen({mode="fullscreen"})',
+    'floating': 'hl.dsp.window.float({action="toggle"})',
+}
+action = sys.argv[1] if len(sys.argv) == 2 else ''
+if action not in actions and action != 'launcher':
+    raise SystemExit('Use previous, next, fullscreen, floating, or launcher')
+env = os.environ.copy()
+env.setdefault('XDG_RUNTIME_DIR', f'/run/user/{os.getuid()}')
+instances = json.loads(subprocess.check_output(['hyprctl', '-j', 'instances'], env=env, text=True, timeout=3))
+if not instances:
+    raise SystemExit('No active Hyprland session')
+live = max(instances, key=lambda instance: instance['time'])
+env['HYPRLAND_INSTANCE_SIGNATURE'] = live['instance']
+env['WAYLAND_DISPLAY'] = live['wl_socket']
+if action == 'launcher':
+    subprocess.Popen(['rofi', '-show', 'drun'], env=env)
+else:
+    subprocess.run(['hyprctl', 'eval', 'hl.dispatch(' + actions[action] + ')'], env=env, check=True, timeout=5)

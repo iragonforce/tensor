@@ -1,0 +1,13 @@
+#!/bin/sh
+# Apply the configured default RGB state. See rgb-default(1) for source and integration details.
+if [ "${1-}" = '--help' ] && [ "$#" -eq 1 ]; then
+  cat <<'OPS_USAGE_TEXT'
+Apply the configured default RGB state.
+Usage: rgb-default 
+
+Source: hosts/tensor/files/.local/bin/rgb-default in ~/ops
+See man rgb-default for the existing call sites and argument handling.
+OPS_USAGE_TEXT
+  exit 0
+fi
+exec /home/iragonforce/.local/share/tensor-control/venv/bin/python /home/iragonforce/.local/share/tensor-control/tensor-rgb.py on

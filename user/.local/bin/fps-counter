@@ -1,0 +1,39 @@
+#!/bin/bash
+# Report the display refresh-rate based status used by the desktop. See fps-counter(1) for source and integration details.
+if [ "${1-}" = '--help' ] && [ "$#" -eq 1 ]; then
+  cat <<'OPS_USAGE_TEXT'
+Report the display refresh-rate based status used by the desktop.
+Usage: fps-counter  [ARGUMENT ...]
+
+Source: hosts/tensor/files/.local/bin/fps-counter in ~/ops
+See man fps-counter for the existing call sites and argument handling.
+OPS_USAGE_TEXT
+  exit 0
+fi
+# FPS counter for Hyprland/Wayland via refresh rate
+
+# Try to get refresh rate from wlr-randr
+if command -v wlr-randr &> /dev/null; then
+    # Get current refresh rate from focused monitor
+    REFRESH=$(wlr-randr | grep -A 3 "Enabled" | grep "Hz" | awk '{print $1}' | head -1)
+    if [ -n "$REFRESH" ]; then
+        # Extract numeric value
+        FPS=$(echo "$REFRESH" | sed 's/Hz//')
+        echo "${FPS} FPS"
+        exit 0
+    fi
+fi
+
+# Fallback: try to read from Hyprland socket
+if [ -n "$HYPRLAND_INSTANCE_SIGNATURE" ]; then
+    # This would require hyprctl, but it's not reliable for FPS
+    # So we'll just show the max refresh rate from the monitor config
+    FPS=$(cat ~/.config/hypr/hyprland.conf 2>/dev/null | grep 'monitor = DP-2' | grep -oP '@\K[0-9]+' | head -1)
+    if [ -n "$FPS" ]; then
+        echo "${FPS} FPS"
+        exit 0
+    fi
+fi
+
+# Final fallback
+echo "? FPS"

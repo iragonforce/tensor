@@ -1,0 +1,101 @@
+#!/usr/bin/env python3
+# Connect to LAN first, then Tailscale on TCP connection failure; used by SSH ProxyCommand. See ssh-lan-tailscale(1) for source and integration details.
+"""OpenSSH ProxyCommand: connect LAN first, fall back to Tailscale.
+
+Usage: ssh_lan_tailscale.py LAN_IP TAILSCALE_IP PORT
+
+Only the initial TCP connection is retried. Once connected, failures in SSH
+handshake or authentication will NOT cause a second connection attempt.
+The program writes SSH protocol bytes to stdout and diagnostics to stderr.
+"""
+
+if __name__ == "__main__":
+    import sys as _ops_sys
+    if _ops_sys.argv[1:] == ["--help"]:
+        print('Connect to LAN first, then Tailscale on TCP connection failure; used by SSH ProxyCommand.\nUsage: ssh-lan-tailscale  [ARGUMENT ...]\nUsage: ssh_lan_tailscale.py LAN_IP TAILSCALE_IP PORT\nerr("Usage: ssh_lan_tailscale.py LAN_IP TAILSCALE_IP PORT")\nSource: shared/scripts/ssh-lan-tailscale in ~/ops\nSee man ssh-lan-tailscale for the existing call sites and argument handling.')
+        raise SystemExit(0)
+import ipaddress
+import os
+import socket
+import sys
+import threading
+
+LAN_TIMEOUT = 4.0
+TAILSCALE_TIMEOUT = 10.0
+CHUNK = 65536
+
+
+def err(message: str) -> None:
+    print(message, file=sys.stderr, flush=True)
+
+
+def main() -> int:
+    if len(sys.argv) != 4:
+        err("Usage: ssh_lan_tailscale.py LAN_IP TAILSCALE_IP PORT")
+        return 2
+    lan, tail, port_arg = sys.argv[1:]
+    try:
+        for address in (lan, tail):
+            if ipaddress.ip_address(address).version != 4:
+                raise ValueError("IPv4 addresses required")
+        port = int(port_arg)
+        if not 1 <= port <= 65535:
+            raise ValueError("invalid port")
+    except ValueError as exc:
+        err(f"ssh-route: invalid destination: {exc}")
+        return 2
+
+    sock = None
+    failures = []
+    for label, address, timeout in (("LAN", lan, LAN_TIMEOUT),
+                                    ("Tailscale", tail, TAILSCALE_TIMEOUT)):
+        try:
+            sock = socket.create_connection((address, port), timeout=timeout)
+            sock.settimeout(None)
+            if label == "Tailscale":
+                err(f"ssh-route: LAN unreachable; connected via Tailscale ({address})")
+            break
+        except OSError as exc:
+            failures.append(f"{label} {address}:{port}: {exc}")
+
+    if sock is None:
+        err("ssh-route: both connection attempts failed: " + "; ".join(failures))
+        return 1
+
+    # This is a byte-transparent stdio <-> TCP bridge for OpenSSH's ProxyCommand.
+    # The upload runs in a daemon thread because stdin may remain open after the
+    # remote SSH service has closed its side of the connection.
+    def upload() -> None:
+        try:
+            while True:
+                data = os.read(0, CHUNK)
+                if not data:
+                    break
+                sock.sendall(data)
+        except OSError:
+            pass
+        finally:
+            try:
+                sock.shutdown(socket.SHUT_WR)
+            except OSError:
+                pass
+
+    worker = threading.Thread(target=upload, daemon=True)
+    worker.start()
+    try:
+        while True:
+            data = sock.recv(CHUNK)
+            if not data:
+                break
+            offset = 0
+            while offset < len(data):
+                offset += os.write(1, data[offset:])
+    except (BrokenPipeError, ConnectionResetError):
+        pass
+    finally:
+        sock.close()
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

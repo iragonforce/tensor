@@ -1,0 +1,20 @@
+#!/bin/bash
+# Enter or leave visual standby while retaining processes, networking and SSH. See hibernate(1) for source and integration details.
+if [ "${1-}" = '--help' ] && [ "$#" -eq 1 ]; then
+  cat <<'OPS_USAGE_TEXT'
+Enter or leave visual standby while retaining processes, networking and SSH.
+Usage: hibernate  [ARGUMENT ...]
+
+Source: hosts/tensor/files/.local/bin/hibernate in ~/ops
+See man hibernate for the existing call sites and argument handling.
+OPS_USAGE_TEXT
+  exit 0
+fi
+set -euo pipefail
+action=${1:-enter}
+if [[ "$action" == resume && ! -f /run/user/1000/tensor-visual-standby.json ]]; then exit 0; fi
+# The SDK must be available even if the user previously closed the RGB GUI.
+if [[ "$action" == enter || "$action" == resume ]]; then
+    systemctl --user is-active --quiet openrgb.service || systemctl --user start openrgb.service
+fi
+exec /home/iragonforce/.local/share/tensor-control/venv/bin/python /home/iragonforce/.local/share/tensor-control/visual-standby.py "$action"

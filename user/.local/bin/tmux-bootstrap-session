@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# Ensure the configured primary tmux session and its missing layout windows exist. See tmux-bootstrap-session(1) for source and integration details.
+if [ "${1-}" = '--help' ] && [ "$#" -eq 1 ]; then
+  cat <<'OPS_USAGE_TEXT'
+Ensure the configured primary tmux session and its missing layout windows exist.
+Usage: tmux-bootstrap-session  [ARGUMENT ...]
+
+Source: shared/scripts/tmux-bootstrap-session in ~/ops
+See man tmux-bootstrap-session for the existing call sites and argument handling.
+OPS_USAGE_TEXT
+  exit 0
+fi
+
+set -euo pipefail
+
+session_name="${1:-main}"
+start_dir="${2:-$HOME}"
+tmux_bin="${TMUX_BIN:-$(command -v tmux 2>/dev/null || true)}"
+
+if [[ -z "$tmux_bin" && -x /usr/bin/tmux ]]; then
+  tmux_bin=/usr/bin/tmux
+fi
+
+if [[ -z "$tmux_bin" && -x /opt/homebrew/bin/tmux ]]; then
+  tmux_bin=/opt/homebrew/bin/tmux
+fi
+
+if [[ -z "$tmux_bin" ]]; then
+  printf 'tmux is not available\n' >&2
+  exit 127
+fi
+
+shell_cmd="$(command -v zsh 2>/dev/null || printf '%s' "${SHELL:-/bin/zsh}")"
+
+"$tmux_bin" start-server
+
+if "$tmux_bin" has-session -t "$session_name" 2>/dev/null; then
+  exit 0
+fi
+
+"$tmux_bin" new-session -d -s "$session_name" -n zsh -c "$start_dir" "$shell_cmd -l"
+"$HOME/.local/bin/tmux-ensure-layout" "$session_name" "$start_dir"
+"$tmux_bin" select-window -t "${session_name}:1"
+
+"$tmux_bin" bind-key -T prefix C-b send-prefix

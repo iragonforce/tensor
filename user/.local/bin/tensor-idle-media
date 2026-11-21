@@ -1,0 +1,202 @@
+#!/usr/bin/env python3
+
+if __name__ == "__main__":
+    import sys as _ops_sys
+    if _ops_sys.argv[1:] == ["--help"]:
+        print('Inspect media activity for the existing idle policy.\nUsage: tensor-idle-media  [ARGUMENT ...]\n\nSource: hosts/tensor/files/.local/bin/idle-media in ~/ops\nSee man tensor-idle-media for the existing call sites and argument handling.')
+        raise SystemExit(0)
+# Inspect media activity for the existing idle policy. See tensor-idle-media(1) for source and integration details.
+import json
+import os
+import pathlib
+import shutil
+import subprocess
+import sys
+
+def run(args):
+    try:
+        return subprocess.run(
+            args,
+            text=True,
+            capture_output=True,
+            timeout=4
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+
+
+def wallpaper_directories():
+    """Find wallpaper assets from live Wallpaper Engine processes."""
+    roots = set()
+
+    try:
+        processes = os.scandir("/proc")
+    except OSError:
+        return roots
+
+    with processes:
+        for entry in processes:
+            if not entry.name.isdigit():
+                continue
+
+            try:
+                raw = pathlib.Path(
+                    entry.path, "cmdline"
+                ).read_bytes()
+
+                args = [
+                    a.decode(errors="replace")
+                    for a in raw.split(b"\0") if a
+                ]
+            except (OSError, PermissionError):
+                continue
+
+            if not args:
+                continue
+
+            if pathlib.Path(args[0]).name != "linux-wallpaperengine":
+                continue
+
+            for i, arg in enumerate(args):
+                if arg == "--bg" and i + 1 < len(args):
+                    roots.add(pathlib.Path(args[i + 1]))
+                elif arg.startswith("--bg="):
+                    roots.add(pathlib.Path(arg[5:]))
+
+    return {p for p in roots if p.is_dir()}
+
+
+def is_wallpaper_stream(properties, roots):
+    """Ignore embedded mpv streams playing active wallpaper assets."""
+    app = str(
+        properties.get("application.name", "")
+    ).casefold()
+
+    if app != "mpv":
+        return False
+
+    media = str(properties.get("media.name", ""))
+
+    if not media.endswith(" - mpv"):
+        return False
+
+    filename = media[:-6]
+
+    if not filename or pathlib.Path(filename).name != filename:
+        return False
+
+    for directory in roots:
+        if (directory / filename).is_file():
+            return True
+
+        # Also support wallpapers whose media is in subfolders.
+        try:
+            if any(
+                p.is_file()
+                for p in directory.rglob(filename)
+            ):
+                return True
+        except OSError:
+            pass
+
+    return False
+
+
+active = []
+ignored = []
+unknown = False
+
+# Detect MPRIS playback where applications expose it.
+players = {}
+
+if shutil.which("playerctl"):
+    result = run([
+        "playerctl", "-a",
+        "-f", "{{playerName}}\t{{status}}",
+        "status"
+    ])
+
+    if result and result.returncode == 0:
+        for line in result.stdout.splitlines():
+            if "\t" not in line:
+                continue
+
+            name, state = line.split("\t", 1)
+            key = name.casefold().split(".", 1)[0]
+
+            players.setdefault(key, set()).add(
+                state.strip().casefold()
+            )
+
+            if state.strip().casefold() == "playing":
+                active.append("MPRIS " + name + ": Playing")
+
+
+# Detect audio streams, excluding wallpaper assets.
+roots = wallpaper_directories()
+
+if shutil.which("pactl"):
+    result = run([
+        "pactl", "--format=json",
+        "list", "sink-inputs"
+    ])
+
+    if result and result.returncode == 0:
+        try:
+            streams = json.loads(result.stdout)
+
+            for stream in streams:
+                if stream.get("corked") is not False:
+                    continue
+
+                props = stream.get("properties") or {}
+
+                app = str(
+                    props.get("application.name", "unknown")
+                )
+                media = str(props.get("media.name", ""))
+
+                if is_wallpaper_stream(props, roots):
+                    ignored.append(
+                        "Wallpaper Engine: " + media
+                    )
+                    continue
+
+                states = players.get(app.casefold(), set())
+
+                if states and "playing" not in states:
+                    ignored.append(
+                        "Paused media: " + app
+                    )
+                    continue
+
+                active.append(
+                    "PipeWire " + app + ": " + media
+                )
+
+        except (ValueError, TypeError):
+            unknown = True
+    else:
+        unknown = True
+else:
+    unknown = True
+
+
+if len(sys.argv) > 1 and sys.argv[1] == "status":
+    if active:
+        print("MEDIA ACTIVE")
+        for item in active:
+            print(" ", item)
+    elif unknown:
+        print("MEDIA UNKNOWN")
+    else:
+        print("NO ACTIVE MEDIA DETECTED")
+
+    for item in ignored:
+        print("IGNORED:", item)
+
+    raise SystemExit(0)
+
+
+# 0 = allow idle; nonzero = defer.
+raise SystemExit(1 if active or unknown else 0)

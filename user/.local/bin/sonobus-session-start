@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# Start the configured SonoBus desktop integration. See sonobus-session-start(1) for source and integration details.
+if [ "${1-}" = '--help' ] && [ "$#" -eq 1 ]; then
+  cat <<'OPS_USAGE_TEXT'
+Start the configured SonoBus desktop integration.
+Usage: sonobus-session-start 
+
+Source: hosts/tensor/files/.local/bin/sonobus-session-start in ~/ops
+See man sonobus-session-start for the existing call sites and argument handling.
+OPS_USAGE_TEXT
+  exit 0
+fi
+set -euo pipefail
+
+dbus-update-activation-environment --systemd \
+  WAYLAND_DISPLAY HYPRLAND_INSTANCE_SIGNATURE \
+  XDG_CURRENT_DESKTOP XDG_SESSION_TYPE DISPLAY
+
+systemctl --user start sonobus-dock.service

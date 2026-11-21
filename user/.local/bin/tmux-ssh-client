@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# Run the SSH transition for the exact invoking tmux client. See tmux-ssh-client(1) for source and integration details.
+if [ "${1-}" = '--help' ] && [ "$#" -eq 1 ]; then
+  cat <<'OPS_USAGE_TEXT'
+Run the SSH transition for the exact invoking tmux client.
+Usage: tmux-ssh-client  [ARGUMENT ...]
+
+Source: hosts/tensor/files/.local/bin/tmux-ssh-client in ~/ops
+See man tmux-ssh-client for the existing call sites and argument handling.
+OPS_USAGE_TEXT
+  exit 0
+fi
+set -uo pipefail
+# Launched by tmux detach-client -E, with the exact invoking client.
+target="${1:-}"
+case "$target" in qubit|tensor|nexus) ;; *) echo 'Invalid SSH target' >&2; exit 2;; esac
+local_host="$(hostname -s)"
+if [[ "$target" == "$local_host" ]]; then
+    printf 'Already on %s\n' "$target" >&2
+    exit 2
+fi
+# Detach the client before opening SSH to avoid nested tmux sessions.
+unset TMUX TMUX_PANE
+if [[ "$local_host" != 'tensor' ]]; then
+    printf 'This launcher belongs to tensor; running on %s\n' "$local_host" >&2
+    exit 2
+fi
+ssh "$target"
+ssh_result=$?
+# Restore the same local tmux session; never use attach -d (which kicks others).
+tmux attach-session -t '1'
+attach_result=$?
+if (( attach_result != 0 )); then exit "$attach_result"; fi
+exit "$ssh_result"

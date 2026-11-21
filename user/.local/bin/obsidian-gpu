@@ -1,0 +1,40 @@
+#!/usr/bin/bash
+# Launch Obsidian with the existing Electron and GPU flags. See obsidian-gpu(1) for source and integration details.
+# Keep the system Electron flags, allowing GPU rendering for Obsidian.
+set -euo pipefail
+config_dir="${XDG_CONFIG_HOME:-$HOME/.config}"
+flags_file="$config_dir/electron43-flags.conf"
+[[ -f "$flags_file" ]] || flags_file="$config_dir/electron-flags.conf"
+flags=()
+if [[ -f "$flags_file" ]]; then
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
+        case "$line" in
+            --disable-gpu|--disable-gpu-compositing|--disable-software-rasterizer) continue ;;
+            --disable-features=*)
+                IFS=, read -ra features <<< "${line#--disable-features=}"
+                kept=()
+                for feature in "${features[@]}"; do
+                    [[ "$feature" == VizDisplayCompositor ]] || kept+=("$feature")
+                done
+                ((${#kept[@]})) || continue
+                line="--disable-features=$(IFS=,; echo "${kept[*]}")"
+                ;;
+        esac
+        flags+=("$line")
+    done < "$flags_file"
+fi
+export ELECTRON_IS_DEV="${ELECTRON_IS_DEV:-0}"
+export ELECTRON_FORCE_IS_PACKAGED="${ELECTRON_FORCE_IS_PACKAGED:-true}"
+# Select the RTX renderer on this NVIDIA + AMD desktop.
+export __NV_PRIME_RENDER_OFFLOAD=1
+export __GLX_VENDOR_LIBRARY_NAME=nvidia
+export __VK_LAYER_NV_optimus=NVIDIA_only
+user_flags=()
+if [[ -f "$config_dir/obsidian/user-flags.conf" ]]; then
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
+        user_flags+=("$line")
+    done < "$config_dir/obsidian/user-flags.conf"
+fi
+exec /usr/lib/electron43/electron "${flags[@]}" --enable-gpu-rasterization /usr/lib/obsidian/app.asar "${user_flags[@]}" "$@"

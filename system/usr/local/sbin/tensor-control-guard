@@ -1,0 +1,25 @@
+#!/bin/sh
+# Apply the existing tensor-control firewall table atomically. See tensor-control-guard(1) for source and integration details.
+if [ "${1-}" = '--help' ] && [ "$#" -eq 1 ]; then
+  cat <<'OPS_USAGE_TEXT'
+Apply the existing tensor-control firewall table atomically.
+Usage: tensor-control-guard 
+
+Source: hosts/tensor/files/usr/local/sbin/control-guard in ~/ops
+See man tensor-control-guard for the existing call sites and argument handling.
+OPS_USAGE_TEXT
+  exit 0
+fi
+set -eu
+
+config=/etc/tensor-control/guard.nft
+
+# Replace only our own table, atomically.
+if /usr/bin/nft list table inet tensor_control >/dev/null 2>&1; then
+  {
+    printf 'delete table inet tensor_control\n'
+    cat "$config"
+  } | /usr/bin/nft -f -
+else
+  /usr/bin/nft -f "$config"
+fi

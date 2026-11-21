@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+# Launch the existing SSH dashboard integration. See tmux-ssh-dashboard(1) for source and integration details.
+if [ "${1-}" = '--help' ] && [ "$#" -eq 1 ]; then
+  cat <<'OPS_USAGE_TEXT'
+Launch the existing SSH dashboard integration.
+Usage: tmux-ssh-dashboard 
+
+Source: hosts/tensor/files/.local/bin/tmux-ssh-dashboard in ~/ops
+See man tmux-ssh-dashboard for the existing call sites and argument handling.
+OPS_USAGE_TEXT
+  exit 0
+fi
+printf '\n  SSH connections | running on tensor\n'
+printf '  ================================\n\n'
+printf '  Ctrl+B, then 0: choose a host\n'
+printf '  Click 0:ssh in the status bar for the same menu\n'
+printf '  The current host is disabled in the menu.\n\n'
+printf '  Select a host with the mouse or its shortcut key.\n'
+printf '  Disconnect from remote tmux (Ctrl+B, then d) to return.\n\n'
+while IFS= read -r _; do
+    :
+done

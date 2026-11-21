@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+# Control the existing desktop idle inhibitor. See caffeinate(1) for source and integration details.
+if [ "${1-}" = '--help' ] && [ "$#" -eq 1 ]; then
+  cat <<'OPS_USAGE_TEXT'
+Control the existing desktop idle inhibitor.
+Usage: caffeinate  [ARGUMENT ...]
+echo "Usage: caffeinate {on|off|toggle|status}" >&2
+Source: hosts/tensor/files/.local/bin/caffeinate in ~/ops
+See man caffeinate for the existing call sites and argument handling.
+OPS_USAGE_TEXT
+  exit 0
+fi
+set -euo pipefail
+
+state="$HOME/.local/state/tensor-caffeinate"
+flag="$state/lock-only"
+
+status() {
+  if [[ -f "$flag" ]]; then
+    echo "caffeinate: ON (idle locks screen)"
+  else
+    echo "caffeinate: OFF (idle enters visual standby)"
+  fi
+}
+
+case "${1:-status}" in
+  on)
+    mkdir -p "$state"
+    touch "$flag"
+    chmod 600 "$flag"
+    status
+    ;;
+  off)
+    rm -f "$flag"
+    status
+    ;;
+  toggle)
+    if [[ -f "$flag" ]]; then
+      rm -f "$flag"
+    else
+      mkdir -p "$state"
+      touch "$flag"
+      chmod 600 "$flag"
+    fi
+    status
+    ;;
+  status)
+    status
+    ;;
+  *)
+    echo "Usage: caffeinate {on|off|toggle|status}" >&2
+    exit 2
+    ;;
+esac

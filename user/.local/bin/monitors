@@ -1,0 +1,21 @@
+#!/bin/bash
+# Switch or repair the existing display configuration through the visual-standby controls. See monitors(1) for source and integration details.
+if [ "${1-}" = '--help' ] && [ "$#" -eq 1 ]; then
+  cat <<'OPS_USAGE_TEXT'
+Switch or repair the existing display configuration through the visual-standby controls.
+Usage: monitors  [ARGUMENT ...]
+
+Source: hosts/tensor/files/.local/bin/monitors in ~/ops
+See man monitors for the existing call sites and argument handling.
+OPS_USAGE_TEXT
+  exit 0
+fi
+set -euo pipefail
+case "${1:-}" in
+ off) exec /home/iragonforce/.local/bin/hibernate ;;
+ on)
+   if [[ -f /run/user/1000/tensor-visual-standby.json ]]; then exec /home/iragonforce/.local/bin/hibernate resume; fi
+   exec /usr/bin/python3 /home/iragonforce/.local/share/tensor-control/desktop.py on ;;
+ repair) exec /usr/bin/python3 /home/iragonforce/.local/share/tensor-control/desktop.py repair-display ;;
+ *) echo 'Use monitors on, monitors off, or monitors repair' >&2; exit 2 ;;
+esac

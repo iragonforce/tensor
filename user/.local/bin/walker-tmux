@@ -1,0 +1,89 @@
+#!/usr/bin/env bash
+# Launch the selected Walker command in the intended tmux context. See walker-tmux(1) for source and integration details.
+if [ "${1-}" = '--help' ] && [ "$#" -eq 1 ]; then
+  cat <<'OPS_USAGE_TEXT'
+Launch the selected Walker command in the intended tmux context.
+Usage: walker-tmux  [ARGUMENT ...]
+
+Source: hosts/tensor/files/.local/bin/walker-tmux in ~/ops
+See man walker-tmux for the existing call sites and argument handling.
+OPS_USAGE_TEXT
+  exit 0
+fi
+set -euo pipefail
+
+# Remove Elephant's optional process launch prefix.
+case "${1:-}" in
+    uwsm-app)
+        shift
+        if [[ "${1:-}" == "--" ]]; then shift; fi
+        ;;
+    systemd-run)
+        shift
+        while [[ "${1:-}" == --* ]]; do shift; done
+        ;;
+    app2unit)
+        shift
+        ;;
+esac
+
+command_text="$*"
+[[ -n "$command_text" ]] || exit 0
+
+runner="$HOME/.local/bin/walker-tmux-shell"
+
+selected=""
+latest=0
+
+# Prefer the most recently active attached Ghostty client.
+while IFS=$'\t' read -r term session activity; do
+    [[ "${term,,}" == *ghostty* ]] || continue
+    [[ "$activity" =~ ^[0-9]+$ ]] || continue
+
+    if (( activity >= latest )); then
+        latest="$activity"
+        selected="$session"
+    fi
+done < <(
+    tmux list-clients \
+      -F $'#{client_termname}\t#{client_session}\t#{client_activity}' \
+      2>/dev/null || true
+)
+
+if [[ -n "$selected" ]]; then
+    # NEW WINDOW, not split-window.
+    tmux new-window \
+      -t "${selected}:" \
+      -n command \
+      -e "WALKER_COMMAND=$command_text" \
+      "$runner"
+
+    # Focus Ghostty if only one matching window exists.
+    if command -v hyprctl >/dev/null &&
+       command -v jq >/dev/null; then
+
+        mapfile -t windows < <(
+            hyprctl clients -j 2>/dev/null |
+              jq -r '.[] |
+                select((.class // "" |
+                ascii_downcase) |
+                contains("ghostty")) |
+                .address' 2>/dev/null
+        )
+
+        if (( ${#windows[@]} == 1 )); then
+            hyprctl dispatch focuswindow \
+              "address:${windows[0]}" >/dev/null 2>&1 || true
+        fi
+    fi
+else
+    # No attached Ghostty/tmux client exists.
+    session="walker-$(date +%s)-$$"
+
+    setsid -f ghostty +new-window -e \
+      tmux new-session \
+      -s "$session" \
+      -n command \
+      -e "WALKER_COMMAND=$command_text" \
+      "$runner" >/dev/null 2>&1
+fi

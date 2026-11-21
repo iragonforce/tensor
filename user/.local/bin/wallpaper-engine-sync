@@ -1,0 +1,204 @@
+#!/usr/bin/env python3
+# Synchronize the configured Wallpaper Engine assets and selection. See wallpaper-engine-sync(1) for source and integration details.
+"""Mirror Wallpaper Engine's saved per-monitor choices onto Hyprland."""
+
+if __name__ == "__main__":
+    import sys as _ops_sys
+    if _ops_sys.argv[1:] == ["--help"]:
+        print('Synchronize the configured Wallpaper Engine assets and selection.\nUsage: wallpaper-engine-sync \n\nSource: hosts/tensor/files/.local/bin/wallpaper-engine-sync in ~/ops\nSee man wallpaper-engine-sync for the existing call sites and argument handling.')
+        raise SystemExit(0)
+import fcntl
+import json
+import os
+from pathlib import Path
+import signal
+import subprocess
+import time
+
+HOME = Path.home()
+SETTINGS = HOME / '.config/wallpaper-engine-sync.json'
+STATE = HOME / '.local/state/wallpaper-engine-sync'
+STATE.mkdir(parents=True, exist_ok=True)
+children = {}
+rejected = {}
+fallback_failed = {}
+last_good_file = STATE / 'last-good.json'
+try:
+    last_good = json.loads(last_good_file.read_text())
+except (OSError, ValueError):
+    last_good = {}
+running = True
+
+
+def log(message):
+    print(time.strftime('%F %T'), message, flush=True)
+
+
+def windows_path(value, prefix, drives=None):
+    value = value.replace('\\', '/')
+    if len(value) > 2 and value[1] == ':':
+        drive = Path((drives or {}).get(value[0].lower(),
+                     prefix / 'dosdevices' / (value[0].lower() + ':')))
+        return (drive / value[2:].lstrip('/')).resolve()
+    return Path(value)
+
+
+def stop(output):
+    item = children.pop(output, None)
+    if item:
+        process = item['process']
+        if process.poll() is None:
+            process.terminate()
+            try:
+                process.wait(timeout=5)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait()
+        item['log'].close()
+
+
+def shutdown(*_):
+    global running
+    running = False
+
+
+def choices(settings, config, connected):
+    user = config['steamuser']
+    selected = user['general']['wallpaperconfig'].get('selectedwallpapers') or {}
+    properties = user.get('wproperties') or {}
+    browser_choices = user['general'].get('browser', {}).get('linuxwallpaperselections', {})
+    result = {}
+    for location, output in settings['monitors'].items():
+        if output not in connected:
+            continue
+        entry = browser_choices.get(location) or properties.get(location) or selected.get(location) or {}
+        filename = entry.get('file') or settings.get('initial_wallpapers', {}).get(location)
+        if not filename:
+            continue
+        path = windows_path(filename, Path(settings['wine_prefix']), settings.get('windows_drives'))
+        folder = path if path.is_dir() else path.parent
+        project = json.loads((folder / 'project.json').read_text())
+        if project.get('type', '').lower() not in ('scene', 'video', 'web'):
+            raise ValueError(f"Unsupported wallpaper type on {output}: {project.get('type')}")
+        props = properties.get(location, {}).get('properties', {})
+        if location in props and isinstance(props[location], dict):
+            props = props[location]
+        args = ['linux-wallpaperengine', '--assets-dir', settings['assets'],
+                '--fps', str(settings.get('fps', 30)), '--silent', '--fullscreen-pause-only-active',
+                '--screen-root', output, '--bg', str(folder), '--scaling', 'fill']
+        for name, value in props.items():
+            if isinstance(value, dict):
+                value = value.get('value')
+            if isinstance(value, bool):
+                value = int(value)
+            if isinstance(value, (str, int, float)):
+                args.extend(['--set-property', f'{name}={value}'])
+        result[output] = args
+    return result
+
+
+def launch(output, args):
+    """Keep the current wallpaper until its replacement maps a Wayland surface."""
+    folder = Path(args[args.index('--bg') + 1])
+    project = json.loads((folder / 'project.json').read_text())
+    candidate_log = STATE / f'{output}.candidate.log'
+    logfile = candidate_log.open('w')
+    env = os.environ.copy()
+    if project.get('type', '').lower() == 'web':
+        cef = '/opt/linux-wallpaperengine/libcef.so'
+        env['LD_PRELOAD'] = cef + (':' + env['LD_PRELOAD'] if env.get('LD_PRELOAD') else '')
+    process = subprocess.Popen(args, stdout=logfile, stderr=logfile, env=env)
+    ready = False
+    deadline = time.monotonic() + 5
+    while running and time.monotonic() < deadline and process.poll() is None:
+        time.sleep(.5)
+        try:
+            layers = json.loads(subprocess.check_output(['hyprctl', 'layers', '-j'], text=True, timeout=3))
+            ready = any(layer.get('pid') == process.pid
+                        for level in layers.get(output, {}).get('levels', {}).values()
+                        for layer in level)
+        except (OSError, ValueError, subprocess.SubprocessError):
+            pass
+        # Give initialization time to report shader/project failures too.
+        if ready and deadline - time.monotonic() < 3:
+            break
+    if not ready or process.poll() is not None:
+        if process.poll() is None:
+            process.terminate()
+            try:
+                process.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait()
+        logfile.close()
+        detail = candidate_log.read_text(errors='replace').splitlines()
+        log(f'Could not load {project.get("title", folder.name)} on {output}; keeping previous wallpaper. '
+            + (detail[-1][:300] if detail else 'No output surface.'))
+        subprocess.run(['notify-send', 'Wallpaper could not load',
+                        f'{project.get("title", folder.name)} is incompatible with the Linux renderer. '
+                        'Your previous wallpaper stays active.'], check=False)
+        return None
+    stop(output)
+    candidate_log.replace(STATE / f'{output}.log')
+    item = dict(process=process, args=args, log=logfile)
+    children[output] = item
+    last_good[output] = args
+    last_good_file.write_text(json.dumps(last_good, indent=2) + '\n')
+    log(f'Applied {folder.name} on {output} (PID {process.pid})')
+    return item
+
+
+def main():
+    lock = (STATE / 'lock').open('w')
+    try:
+        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        return
+    signal.signal(signal.SIGTERM, shutdown)
+    signal.signal(signal.SIGINT, shutdown)
+    last_error = None
+    log('Watching Wallpaper Engine selections; Monitor0 → DP-5, Monitor1 → DP-3')
+    try:
+        while running:
+            try:
+                settings = json.loads(SETTINGS.read_text())
+                config = json.loads(Path(settings['config']).read_text())
+                monitors = json.loads(subprocess.check_output(
+                    ['hyprctl', 'monitors', '-j'], text=True, timeout=5))
+                desired = choices(settings, config, {m['name'] for m in monitors})
+                for output in set(children) - set(desired):
+                    stop(output)
+                for output, args in desired.items():
+                    old = children.get(output)
+                    if old and old['args'] == args and old['process'].poll() is None:
+                        continue
+                    if rejected.get(output) != args:
+                        if launch(output, args):
+                            rejected.pop(output, None)
+                            continue
+                        rejected[output] = args
+                    old = children.get(output)
+                    if not old or old['process'].poll() is not None:
+                        fallback = last_good.get(output)
+                        if not fallback or fallback == args:
+                            empty = {'steamuser': {'general': {'wallpaperconfig': {}}, 'wproperties': {}}}
+                            fallback = choices(settings, empty, {output}).get(output)
+                        if fallback and fallback != args:
+                            attempt = (args, fallback)
+                            if fallback_failed.get(output) != attempt:
+                                if not launch(output, fallback):
+                                    fallback_failed[output] = attempt
+                last_error = None
+            except (OSError, ValueError, KeyError, subprocess.SubprocessError) as exc:
+                message = str(exc)
+                if message != last_error:
+                    log(message)
+                last_error = message
+            time.sleep(2)
+    finally:
+        for output in list(children):
+            stop(output)
+
+
+if __name__ == '__main__':
+    main()

@@ -1,0 +1,63 @@
+#!/usr/bin/env bash
+# Launch Minecraft with the active desktop display environment. See minecraft(1) for source and integration details.
+if [ "${1-}" = '--help' ] && [ "$#" -eq 1 ]; then
+  cat <<'OPS_USAGE_TEXT'
+Launch Minecraft with the active desktop display environment.
+Usage: minecraft 
+
+Source: hosts/tensor/files/.local/bin/minecraft in ~/ops
+See man minecraft for the existing call sites and argument handling.
+OPS_USAGE_TEXT
+  exit 0
+fi
+set -euo pipefail
+
+# SSH and older tmux panes do not necessarily inherit the active desktop display.
+if ! desktop_env=$(systemctl --user show-environment); then
+  printf 'Minecraft: cannot read Tensor desktop environment\n' >&2
+  exit 1
+fi
+
+while IFS='=' read -r key value; do
+  case "$key" in
+    XDG_RUNTIME_DIR|WAYLAND_DISPLAY|DISPLAY|DBUS_SESSION_BUS_ADDRESS|HYPRLAND_INSTANCE_SIGNATURE)
+      export "$key=$value"
+      ;;
+  esac
+done <<< "$desktop_env"
+
+if [[ -z ${XDG_RUNTIME_DIR:-} || -z ${WAYLAND_DISPLAY:-} ]]; then
+  printf 'Minecraft: no active Wayland desktop session\n' >&2
+  exit 1
+fi
+
+case "$WAYLAND_DISPLAY" in
+  /*) display_socket=$WAYLAND_DISPLAY ;;
+  *) display_socket=$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY ;;
+esac
+if [[ ! -S $display_socket ]]; then
+  printf 'Minecraft: Wayland display socket is unavailable\n' >&2
+  exit 1
+fi
+
+log_dir=$HOME/.local/state
+mkdir -p "$log_dir"
+nohup env \
+  -u QT_STYLE_OVERRIDE \
+  -u QT_QPA_PLATFORMTHEME \
+  -u QML_IMPORT_PATH \
+  -u QML2_IMPORT_PATH \
+  QT_QPA_PLATFORM=wayland \
+  QT_QUICK_CONTROLS_STYLE=Basic \
+  mcpelauncher-ui-qt -v \
+  >"$log_dir/mcpelauncher.log" 2>&1 </dev/null &
+
+launcher_pid=$!
+disown "$launcher_pid" 2>/dev/null || true
+sleep 3
+if ! kill -0 "$launcher_pid" 2>/dev/null; then
+  printf 'Minecraft launcher exited; see %s/mcpelauncher.log\n' "$log_dir" >&2
+  exit 1
+fi
+
+printf 'Minecraft launcher started\n'

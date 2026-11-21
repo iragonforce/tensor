@@ -1,0 +1,13 @@
+#!/bin/sh
+# Show Solaar mouse settings. See mx-master-settings(1) for source and integration details.
+if [ "${1-}" = '--help' ] && [ "$#" -eq 1 ]; then
+  cat <<'OPS_USAGE_TEXT'
+Show Solaar mouse settings.
+Usage: mx-master-settings 
+
+Source: hosts/tensor/files/.local/bin/mx-master-settings in ~/ops
+See man mx-master-settings for the existing call sites and argument handling.
+OPS_USAGE_TEXT
+  exit 0
+fi
+exec /usr/bin/solaar --window show

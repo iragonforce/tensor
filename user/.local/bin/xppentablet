@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+# Launch the XP-Pen tablet application with its existing background option. See xppentablet(1) for source and integration details.
+if [ "${1-}" = '--help' ] && [ "$#" -eq 1 ]; then
+  cat <<'OPS_USAGE_TEXT'
+Launch the XP-Pen tablet application with its existing background option.
+Usage: xppentablet  [ARGUMENT ...]
+printf 'Usage: xppentablet [--background]\n' >&2
+Source: hosts/tensor/files/.local/bin/xppentablet in ~/ops
+See man xppentablet for the existing call sites and argument handling.
+OPS_USAGE_TEXT
+  exit 0
+fi
+set -euo pipefail
+
+background=0
+if [[ $# -gt 0 && $1 == --background ]]; then
+  background=1
+  shift
+fi
+if [[ $# -gt 0 ]]; then
+  printf 'Usage: xppentablet [--background]\n' >&2
+  exit 2
+fi
+
+# SSH shells may not inherit the active Hyprland display variables.
+while IFS='=' read -r key value; do
+  case "$key" in
+    DISPLAY|WAYLAND_DISPLAY|HYPRLAND_INSTANCE_SIGNATURE|XDG_RUNTIME_DIR|XAUTHORITY)
+      if [[ -z "$(printenv "$key" 2>/dev/null || true)" ]]; then
+        export "$key=$value"
+      fi
+      ;;
+  esac
+done < <(systemctl --user show-environment 2>/dev/null || true)
+if [[ -z "$(printenv DISPLAY 2>/dev/null || true)" && -S /tmp/.X11-unix/X0 ]]; then
+  export DISPLAY=:0
+fi
+
+if pgrep -u "$(id -u)" -x PenTablet >/dev/null 2>&1; then
+  if (( ! background )) && [[ -n "$(printenv HYPRLAND_INSTANCE_SIGNATURE 2>/dev/null || true)" ]]; then
+    hyprctl dispatch focuswindow 'class:^(PenTablet)$' >/dev/null 2>&1 || true
+  fi
+  exit 0
+fi
+
+nohup "$HOME/.local/bin/xppentablet-wayland" >/dev/null 2>&1 </dev/null &
+for (( attempt=0; attempt<20; attempt++ )); do
+  if pgrep -u "$(id -u)" -x PenTablet >/dev/null 2>&1; then
+    exit 0
+  fi
+  sleep 0.25
+done
+printf 'XP-Pen driver did not start\n' >&2
+exit 1
