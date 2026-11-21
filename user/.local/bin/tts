@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+BASE="$HOME/.local/share/voxcpm2"
+PYTHON="$BASE/.venv/bin/python"
+APP="$BASE/tts.py"
+UNIT=wallpaper-engine-sync.service
+
+if [[ "${1:-}" == --help ||
+      "${1:-}" == -h ||
+      "${1:-}" == --dry-run ]]; then
+  exec "$PYTHON" "$APP" "$@"
+fi
+
+exec 9>"$BASE/.inference.lock"
+flock -n 9 || {
+  echo "Another VoxCPM2 job is running" >&2
+  exit 1
+}
+
+RESTORE=0
+
+cleanup() {
+  local status=$?
+  trap - EXIT
+
+  if (( RESTORE )); then
+    echo "=== RESTORE WALLPAPER ENGINE ==="
+    systemctl --user start "$UNIT" || {
+      echo "Wallpaper restoration failed" >&2
+      (( status != 0 )) || status=1
+    }
+  fi
+
+  exit "$status"
+}
+
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
+if systemctl --user is-active --quiet "$UNIT"; then
+  RESTORE=1
+  echo "=== RELEASE WALLPAPER VRAM ==="
+  systemctl --user stop "$UNIT"
+fi
+
+"$PYTHON" "$APP" "$@"

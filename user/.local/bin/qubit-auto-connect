@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+HOST="192.168.1.4"
+CHECK_ONLY="${1:-}"
+
+log() {
+  printf '%s\n' "$*"
+}
+
+# Sunshine is normally started by qubit's dock automation.
+if ! /usr/bin/curl -fsS \
+    --connect-timeout 2 \
+    --max-time 4 \
+    "http://${HOST}:47989/serverinfo" \
+    >/dev/null 2>&1; then
+  log "SKIP: qubit Sunshine unavailable"
+  exit 0
+fi
+
+log "PASS: qubit Sunshine reachable"
+
+# Wait until the Hyprland graphical session exists.
+WAYLAND=$(
+  systemctl --user show-environment |
+    sed -n 's/^WAYLAND_DISPLAY=//p' |
+    head -n 1
+)
+
+RUNTIME="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+
+if [[ -z "$WAYLAND" || ! -S "$RUNTIME/$WAYLAND" ]]; then
+  log "SKIP: Hyprland not ready"
+  exit 0
+fi
+
+log "PASS: Hyprland ready"
+
+if [[ "$CHECK_ONLY" == "--check" ]]; then
+  for service in sonobus-dock.service moonlight-dock.service; do
+    if systemctl --user is-active --quiet "$service"; then
+      log "ACTIVE: $service"
+    else
+      log "RECOVERY NEEDED: $service"
+    fi
+  done
+  exit 0
+fi
+
+# Recover SonoBus only if necessary.
+if ! systemctl --user is-active --quiet sonobus-dock.service; then
+  log "Starting SonoBus"
+  systemctl --user start sonobus-dock.service
+else
+  log "SonoBus already active"
+fi
+
+# Avoid a duplicate Moonlight session.
+if systemctl --user is-active --quiet moonlight-dock.service ||
+   pgrep -u "$(id -u)" -ix moonlight >/dev/null; then
+  log "Moonlight already running"
+  exit 0
+fi
+
+log "Starting Moonlight"
+systemctl --user start moonlight-dock.service
+
+if systemctl --user is-active --quiet moonlight-dock.service; then
+  log "PASS: Moonlight running"
+else
+  log "ERROR: Moonlight did not remain active"
+  exit 1
+fi

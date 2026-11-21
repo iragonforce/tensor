@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# Fill missing primary tmux windows without replacing existing windows or applications. See tmux-ensure-layout(1) for source and integration details.
+if [ "${1-}" = '--help' ] && [ "$#" -eq 1 ]; then
+  cat <<'OPS_USAGE_TEXT'
+Fill missing primary tmux windows without replacing existing windows or applications.
+Usage: tmux-ensure-layout  [ARGUMENT ...]
+
+Source: shared/scripts/tmux-ensure-layout in ~/ops
+See man tmux-ensure-layout for the existing call sites and argument handling.
+OPS_USAGE_TEXT
+  exit 0
+fi
+
+set -euo pipefail
+
+session_name="${1:-main}"
+start_dir="${2:-$HOME}"
+tmux_bin="${TMUX_BIN:-$(command -v tmux 2>/dev/null || true)}"
+[[ -n "$tmux_bin" ]] || exit 127
+[[ -d "$start_dir" ]] || start_dir="$HOME"
+
+"$tmux_bin" has-session -t "$session_name" 2>/dev/null || exit 0
+
+has_window() {
+  "$tmux_bin" list-windows -t "$session_name" -F '#{window_index}' | grep -qx -- "$1"
+}
+
+# Fill gaps only. Existing windows may contain unsaved work or long-running jobs.
+if ! has_window 1; then
+  "$tmux_bin" new-window -d -t "${session_name}:1" -n zsh -c "$start_dir" "$(command -v zsh) -l"
+fi
+
+cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/tmux-managed"
+mkdir -p "$cache_dir"
+nvim_socket="$cache_dir/${session_name}.nvim.sock"
+if ! has_window 2; then
+  printf -v nvim_command 'exec nvim --listen %q' "$nvim_socket"
+  "$tmux_bin" new-window -d -t "${session_name}:2" -n nvim -c "$start_dir" "$nvim_command"
+fi
+if ! has_window 9; then
+  "$tmux_bin" new-window -d -t "${session_name}:9" -n btop -c "$start_dir" 'exec btop'
+fi

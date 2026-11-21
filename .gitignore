@@ -221,3 +221,10 @@
 !system/usr/local/bin/sshr
 !system/usr/local/sbin/
 !system/usr/local/sbin/tensor-control-guard
+!user/.local/bin/tmux-ensure-layout
+!user/.local/bin/qubit-auto-connect
+!user/.local/bin/tts
+!user/.local/bin/voxcpm-narrate
+!system/usr/local/sbin/tensor-standby-cpu
+!system/environment.d/
+!system/environment.d/90-nvidia-wayland.conf

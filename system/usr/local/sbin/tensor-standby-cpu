@@ -1,0 +1,125 @@
+#!/usr/bin/python3
+"""Reversible AMD P-State EPP control for Tensor visual standby."""
+
+import fcntl
+import json
+import os
+import pathlib
+import sys
+import tempfile
+
+BASE = pathlib.Path("/sys/devices/system/cpu/cpufreq")
+STATE = pathlib.Path("/run/tensor-standby-cpu.json")
+LOCK = pathlib.Path("/run/tensor-standby-cpu.lock")
+
+def read(path):
+    return path.read_text().strip()
+
+def policies():
+    result = sorted(BASE.glob("policy*/energy_performance_preference"))
+    if not result:
+        raise RuntimeError("No CPU EPP policies found")
+    return result
+
+def save(data):
+    fd, tmp = tempfile.mkstemp(
+        prefix=".tensor-standby-cpu-", dir="/run"
+    )
+    try:
+        with os.fdopen(fd, "w") as f:
+            json.dump(data, f)
+            f.write("\n")
+            f.flush()
+            os.fsync(f.fileno())
+        os.replace(tmp, STATE)
+    finally:
+        if os.path.exists(tmp):
+            os.unlink(tmp)
+
+def enter():
+    dynamic = pathlib.Path(
+        "/sys/devices/system/cpu/amd_pstate/dynamic_epp"
+    )
+    if dynamic.exists() and read(dynamic) != "disabled":
+        raise RuntimeError("dynamic_epp is enabled")
+
+    paths = policies()
+
+    for p in paths:
+        if read(p.parent / "scaling_driver") != "amd-pstate-epp":
+            raise RuntimeError(f"Unexpected driver: {p.parent}")
+        available = read(
+            p.parent / "energy_performance_available_preferences"
+        ).split()
+        if "power" not in available:
+            raise RuntimeError(f"Power EPP unavailable: {p}")
+
+    if STATE.exists():
+        data = json.loads(STATE.read_text())
+    else:
+        originals = {p.parent.name: read(p) for p in paths}
+
+        # Reject values that might not be restorable by name.
+        for p in paths:
+            value = originals[p.parent.name]
+            available = read(
+                p.parent / "energy_performance_available_preferences"
+            ).split()
+            if value not in available or value == "custom":
+                raise RuntimeError(f"Unsupported original EPP: {value}")
+
+        data = {"version": 1, "epp": originals}
+        save(data)
+
+    if set(data["epp"]) != {p.parent.name for p in paths}:
+        raise RuntimeError("CPU policy inventory changed")
+
+    for p in paths:
+        p.write_text("power\n")
+
+    if any(read(p) != "power" for p in paths):
+        raise RuntimeError("CPU EPP verification failed")
+
+    print(f"CPU standby: {len(paths)} policies set to power")
+
+def resume():
+    if not STATE.exists():
+        print("CPU standby: no saved state")
+        return
+
+    data = json.loads(STATE.read_text())
+    paths = policies()
+
+    if set(data["epp"]) != {p.parent.name for p in paths}:
+        raise RuntimeError("CPU policy inventory changed")
+
+    for p in paths:
+        p.write_text(data["epp"][p.parent.name] + "\n")
+
+    if any(
+        read(p) != data["epp"][p.parent.name]
+        for p in paths
+    ):
+        raise RuntimeError("CPU EPP restoration failed")
+
+    STATE.unlink()
+    print("CPU standby: original EPP restored")
+
+def main():
+    if os.geteuid() != 0:
+        raise RuntimeError("Root privileges required")
+
+    if len(sys.argv) != 2 or sys.argv[1] not in ("enter", "resume"):
+        raise SystemExit("Usage: tensor-standby-cpu enter|resume")
+
+    os.umask(0o077)
+
+    with LOCK.open("a") as f:
+        fcntl.flock(f, fcntl.LOCK_EX)
+        if sys.argv[1] == "enter":
+            enter()
+        else:
+            resume()
+
+if __name__ == "__main__":
+    main()

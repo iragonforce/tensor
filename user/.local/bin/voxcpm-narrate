@@ -1,0 +1,94 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+BASE="$HOME/.local/share/voxcpm2"
+VOICE="$BASE/voices/female-01"
+UNIT="wallpaper-engine-sync.service"
+
+if (( $# < 1 || $# > 2 )); then
+  echo "Usage: voxcpm-narrate TEXT_OR_FILE [OUTPUT.wav]" >&2
+  exit 2
+fi
+
+if [[ -f "$1" ]]; then
+  TEXT=$(<"$1")
+else
+  TEXT="$1"
+fi
+
+if [[ -z "${TEXT//[[:space:]]/}" ]]; then
+  echo "ERROR: Empty narration text" >&2
+  exit 2
+fi
+
+# Long documents will be divided into segments separately.
+if (( ${#TEXT} > 1800 )); then
+  echo "ERROR: Text exceeds 1800 characters; split into segments" >&2
+  exit 2
+fi
+
+OUTPUT="${2:-$BASE/outputs/narration-$(date +%Y%m%d-%H%M%S).wav}"
+
+if [[ -e "$OUTPUT" ]]; then
+  echo "ERROR: Refusing to overwrite $OUTPUT" >&2
+  exit 1
+fi
+
+mkdir -p "$(dirname "$OUTPUT")"
+
+echo "=== ACQUIRE GPU LOCK ==="
+exec 9>"$BASE/.inference.lock"
+flock -n 9 || {
+  echo "ERROR: Another narration job is active" >&2
+  exit 1
+}
+
+RESTORE=0
+
+cleanup() {
+  status=$?
+  trap - EXIT INT TERM
+
+  if (( RESTORE )); then
+    echo "=== RESTORE WALLPAPER ==="
+    systemctl --user start "$UNIT" || {
+      echo "WARNING: Wallpaper restoration failed" >&2
+      (( status != 0 )) || status=1
+    }
+  fi
+
+  exit "$status"
+}
+
+trap cleanup EXIT
+trap 'exit 130' INT
+trap 'exit 143' TERM
+
+echo "=== RELEASE WALLPAPER VRAM ==="
+if systemctl --user is-active --quiet "$UNIT"; then
+  RESTORE=1
+  systemctl --user stop "$UNIT"
+fi
+
+echo "=== GENERATE NARRATION ==="
+"$BASE/.venv/bin/voxcpm" clone \
+  --device cuda \
+  --no-denoiser \
+  --no-optimize \
+  --prompt-audio "$VOICE/reference.wav" \
+  --prompt-file "$VOICE/transcript.txt" \
+  --reference-audio "$VOICE/reference.wav" \
+  --text "$TEXT" \
+  --cfg-value 2.0 \
+  --inference-timesteps 20 \
+  --seed 42 \
+  --output "$OUTPUT"
+
+echo "=== VERIFY OUTPUT ==="
+ffprobe -v error \
+  -show_entries stream=sample_rate,channels:format=duration \
+  -of default=noprint_wrappers=1 \
+  "$OUTPUT"
+
+echo "=== COMPLETE ==="
+echo "$OUTPUT"
