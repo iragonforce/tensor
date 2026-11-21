@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+# Run the existing scheduled Arch update procedure under its lock. See auto-update(1) for source and integration details.
+set -uo pipefail
+
+exec 9>/run/lock/auto-update.lock
+flock -n 9 || {
+  echo "Another auto-update is running"
+  exit 0
+}
+
+USER_NAME=iragonforce
+FAILED=0
+
+step() {
+  local name="$1"
+  shift
+  echo "=== $name ==="
+  if "$@"; then
+    echo "SUCCESS: $name"
+  else
+    echo "FAILED: $name"
+    FAILED=1
+  fi
+}
+
+echo "=== AUTO-UPDATE STARTED: $(date) ==="
+
+# Official Arch packages
+if ! pacman -Syu --noconfirm; then
+  echo "FAILED: pacman. AUR update skipped."
+  FAILED=1
+else
+  # AUR packages, built as the regular user
+  if command -v yay >/dev/null; then
+    step yay runuser -u "$USER_NAME" -- yay -Sua \
+      --noconfirm \
+      --sudoflags -n \
+      --answerclean None \
+      --answerdiff None \
+      --answeredit None
+  fi
+fi
+
+# Flatpak system and user installations
+if command -v flatpak >/dev/null; then
+  step flatpak-system flatpak update --system -y --noninteractive
+  step flatpak-user runuser -u "$USER_NAME" -- \
+    flatpak update --user -y --noninteractive
+fi
+
+# User-owned global npm packages
+if command -v npm >/dev/null; then
+  USER_HOME=$(getent passwd "$USER_NAME" | cut -d: -f6)
+  PREFIX=$(runuser -u "$USER_NAME" -- npm prefix -g 2>/dev/null || :)
+
+  if [[ "$PREFIX" == "$USER_HOME/"* ]]; then
+    step npm runuser -u "$USER_NAME" -- npm update -g --yes
+  else
+    echo "SKIP npm: global prefix is not user-owned"
+  fi
+fi
+
+echo "=== AUTO-UPDATE FINISHED: $(date) ==="
+exit "$FAILED"

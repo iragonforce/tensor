@@ -1,0 +1,11 @@
+[Unit]
+Description=Automatic updates at 03:00
+
+[Timer]
+OnCalendar=*-*-* 03:00:00
+Persistent=true
+AccuracySec=1min
+Unit=auto-update.service
+
+[Install]
+WantedBy=timers.target

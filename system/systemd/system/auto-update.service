@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily automatic package updates
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/auto-update
+TimeoutStartSec=0
+Nice=10
+IOSchedulingClass=idle
