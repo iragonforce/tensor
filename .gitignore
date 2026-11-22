@@ -292,3 +292,6 @@
 !system/caddy/
 !system/caddy/Caddyfile
 !system/caddy/homelab-root.crt
+!.github/
+!.github/workflows/
+!.github/workflows/gitleaks.yml
